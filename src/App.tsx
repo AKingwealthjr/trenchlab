@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UniversityProvider } from './context/UniversityContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UniversityProvider, useUniversity } from './context/UniversityContext';
 import { Header } from './components/layout/Header';
 import { Sidebar, NavigationTab } from './components/layout/Sidebar';
 import { Dashboard } from './components/dashboard/Dashboard';
@@ -10,30 +10,156 @@ import { ChallengesView } from './components/challenges/ChallengesView';
 import { ToolsView } from './components/tools/ToolsView';
 import { GlossaryView } from './components/glossary/GlossaryView';
 import { AuthModal } from './components/auth/AuthModal';
-import { Menu } from 'lucide-react';
+import { LoginPage } from './components/auth/LoginPage';
+import { Menu, Terminal, Loader2 } from 'lucide-react';
+
+function mapPathToTab(path: string): NavigationTab | 'login' | 'register' {
+  const cleanPath = path.toLowerCase().replace(/\/$/, '') || '/dashboard';
+  if (cleanPath === '/login') return 'login';
+  if (cleanPath === '/register') return 'register';
+  if (cleanPath === '/curriculum' || cleanPath.startsWith('/learn')) return 'curriculum';
+  if (cleanPath === '/calculator') return 'calculator';
+  if (cleanPath === '/journal') return 'journal';
+  if (cleanPath === '/challenges') return 'challenges';
+  if (cleanPath === '/tools') return 'tools';
+  if (cleanPath === '/glossary') return 'glossary';
+  if (cleanPath === '/dashboard' || cleanPath === '/progress' || cleanPath === '/settings' || cleanPath === '') return 'dashboard';
+  return 'dashboard';
+}
+
+function mapTabToPath(tab: NavigationTab): string {
+  switch (tab) {
+    case 'dashboard': return '/dashboard';
+    case 'curriculum': return '/curriculum';
+    case 'calculator': return '/calculator';
+    case 'journal': return '/journal';
+    case 'challenges': return '/challenges';
+    case 'tools': return '/tools';
+    case 'glossary': return '/glossary';
+    default: return '/dashboard';
+  }
+}
 
 function UniversityApp() {
-  const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
+  const { isAuthenticated, authLoading } = useUniversity();
+
+  const [activeTab, setActiveTab] = useState<NavigationTab>(() => {
+    const initial = mapPathToTab(window.location.pathname);
+    return (initial === 'login' || initial === 'register') ? 'dashboard' : initial;
+  });
+
+  const [authRoute, setAuthRoute] = useState<'login' | 'register' | null>(() => {
+    const initial = mapPathToTab(window.location.pathname);
+    return (initial === 'login' || initial === 'register') ? initial : null;
+  });
+
+  const [returnToTab, setReturnToTab] = useState<NavigationTab>('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = mapPathToTab(window.location.pathname);
+      if (route === 'login' || route === 'register') {
+        setAuthRoute(route);
+      } else {
+        setAuthRoute(null);
+        setActiveTab(route);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Protected Route enforcement: Redirect unauthenticated operators to /login
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      const currentRoute = mapPathToTab(window.location.pathname);
+      if (currentRoute !== 'login' && currentRoute !== 'register') {
+        setReturnToTab(currentRoute);
+      }
+      setAuthRoute(currentRoute === 'register' ? 'register' : 'login');
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        window.history.replaceState({}, '', '/login');
+      }
+    } else {
+      // If user is authenticated and on /login or /register, redirect to dashboard
+      const currentRoute = mapPathToTab(window.location.pathname);
+      if (currentRoute === 'login' || currentRoute === 'register' || authRoute !== null) {
+        const dest = returnToTab || 'dashboard';
+        setAuthRoute(null);
+        setActiveTab(dest);
+        window.history.replaceState({}, '', mapTabToPath(dest));
+      }
+    }
+  }, [isAuthenticated, authLoading, authRoute, returnToTab]);
+
+  const handleNavigate = useCallback((tab: NavigationTab) => {
+    setActiveTab(tab);
+    setAuthRoute(null);
+    const path = mapTabToPath(tab);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+  }, []);
+
+  const handleAuthSuccess = useCallback(() => {
+    const dest = returnToTab || 'dashboard';
+    setAuthRoute(null);
+    setActiveTab(dest);
+    window.history.replaceState({}, '', mapTabToPath(dest));
+  }, [returnToTab]);
+
+  // Loading State: Technical Terminal Splash
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0B] text-[#EDEDEF] flex flex-col items-center justify-center p-6 select-none font-mono">
+        <div className="w-12 h-12 rounded-xl bg-[#131316] border border-[#E8A33D]/40 flex items-center justify-center text-[#E8A33D] font-bold text-lg mb-4 shadow-[0_0_25px_-5px_rgba(232,163,61,0.25)]">
+          TL
+        </div>
+        <div className="flex items-center space-x-2 text-xs text-[#EDEDEF] tracking-wider mb-2">
+          <Loader2 className="w-4 h-4 animate-spin text-[#E8A33D]" />
+          <span>INITIALIZING TRENCHLAB OPERATOR SESSION...</span>
+        </div>
+        <span className="text-[10px] text-[#9A9AA3]">
+          CONNECTING TO SOLANA ARCHIVE & CLOUD FIRESTORE
+        </span>
+      </div>
+    );
+  }
+
+  // Unauthenticated: Show dedicated /login or /register terminal view
+  if (!isAuthenticated || authRoute !== null) {
+    return (
+      <LoginPage 
+        initialMode={authRoute === 'register' ? 'register' : 'login'} 
+        returnTo={returnToTab}
+        onSuccess={handleAuthSuccess}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-[#EDEDEF] flex">
-      {/* Sidebar Component */}
+      {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigate}
         mobileOpen={mobileSidebarOpen}
         setMobileOpen={setMobileSidebarOpen}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content Viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header Bar trigger */}
+        {/* Mobile Top Bar */}
         <div className="lg:hidden h-14 bg-[#0D0D10] border-b border-[#242429] px-4 flex items-center justify-between sticky top-0 z-40">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="p-1.5 text-[#8E8E98] hover:text-[#EDEDEF] rounded border border-[#242429]"
+            className="p-1.5 text-[#9A9AA3] hover:text-[#EDEDEF] rounded border border-[#242429] cursor-pointer"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -49,7 +175,7 @@ function UniversityApp() {
 
           <button
             onClick={() => setAuthModalOpen(true)}
-            className="text-xs font-mono text-[#E8A33D] bg-[#1C1C22] px-2.5 py-1 rounded border border-[#242429]"
+            className="text-xs font-mono text-[#E8A33D] bg-[#1C1C22] px-2.5 py-1 rounded border border-[#242429] cursor-pointer"
           >
             PROFILE
           </button>
@@ -61,7 +187,7 @@ function UniversityApp() {
         {/* Dynamic Route View */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           {activeTab === 'dashboard' && (
-            <Dashboard onNavigate={setActiveTab} />
+            <Dashboard onNavigate={handleNavigate} />
           )}
 
           {activeTab === 'curriculum' && (
@@ -69,7 +195,7 @@ function UniversityApp() {
           )}
 
           {activeTab === 'calculator' && (
-            <PositionCalculator onNavigateToJournal={() => setActiveTab('journal')} />
+            <PositionCalculator onNavigateToJournal={() => handleNavigate('journal')} />
           )}
 
           {activeTab === 'journal' && (
@@ -92,7 +218,13 @@ function UniversityApp() {
 
       {/* Auth / Profile Modal */}
       {authModalOpen && (
-        <AuthModal onClose={() => setAuthModalOpen(false)} />
+        <AuthModal 
+          onClose={() => setAuthModalOpen(false)} 
+          onNavigateToLogin={() => {
+            setAuthModalOpen(false);
+            setAuthRoute('login');
+          }}
+        />
       )}
     </div>
   );

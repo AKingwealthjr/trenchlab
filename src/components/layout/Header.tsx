@@ -77,12 +77,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
           <span className="text-[#EDEDEF]">{currentLevel.shortTitle}</span>
         </div>
 
-        {/* Account / Profile Button */}
+        {/* Account / Profile Button & Quick Sign Out */}
         <div className="relative flex items-center space-x-2">
           <button
             onClick={onOpenAuth}
-            className="flex items-center space-x-2 bg-[#131316] hover:bg-[#1C1C22] border border-[#242429] hover:border-[#3A3A42] px-2.5 py-1 rounded transition-colors text-xs"
-            title="Account Settings"
+            className="flex items-center space-x-2 bg-[#131316] hover:bg-[#1C1C22] border border-[#242429] hover:border-[#3A3A42] px-2.5 py-1 rounded transition-colors text-xs cursor-pointer"
+            title="Operator Identity Profile"
           >
             <img 
               src={user.avatarUrl} 
@@ -92,6 +92,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
             <span className="text-[#EDEDEF] font-medium max-w-[90px] truncate hidden sm:inline">
               {user.name}
             </span>
+          </button>
+
+          <button
+            onClick={logout}
+            className="flex items-center space-x-1 bg-[#131316] hover:bg-rose-950/40 border border-[#242429] hover:border-rose-800 text-[#9A9AA3] hover:text-rose-300 px-2 py-1 rounded transition-colors text-xs font-mono cursor-pointer"
+            title="Sign Out of Terminal"
+          >
+            <LogOut className="w-3.5 h-3.5 text-[#E8A33D]" />
+            <span className="text-[10px] hidden md:inline">SIGN OUT</span>
           </button>
         </div>
       </div>

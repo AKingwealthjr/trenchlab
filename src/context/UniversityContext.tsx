@@ -1,10 +1,37 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { UserProfile, UserProgress, TradeJournalEntry, Lesson, Phase } from '../types';
 import { LEVELS, LevelInfo } from '../data/levelsData';
-import { CURRICULUM_DATA, TOTAL_CURRICULUM_LESSONS } from '../data/curriculumData';
+import { TOTAL_CURRICULUM_LESSONS } from '../data/curriculumData';
+import { 
+  auth, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  googleProvider, 
+  githubProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail,
+  signOut,
+  FirebaseUser
+} from '../lib/firebase';
+import { 
+  getOrCreateUserProfile, 
+  fetchUserFullProgress, 
+  persistLessonProgress, 
+  persistQuizScore, 
+  persistChallengeCompletion, 
+  persistJournalEntry, 
+  deleteJournalEntryDoc, 
+  updateUserSummaryDoc,
+  FirestoreUserDocument 
+} from '../lib/firestoreService';
 
 interface UniversityContextType {
   user: UserProfile;
+  firebaseUser: FirebaseUser | null;
+  authLoading: boolean;
+  isAuthenticated: boolean;
   progress: UserProgress;
   currentLevel: LevelInfo;
   nextLevel: LevelInfo | null;
@@ -12,28 +39,45 @@ interface UniversityContextType {
   xpToNextLevel: number;
   totalLessonsCompleted: number;
   progressPercentage: number;
-  toggleLessonComplete: (lessonId: string) => void;
-  submitQuizScore: (quizId: string, score: number) => void;
-  saveAssignment: (lessonId: string, deliverable: string) => void;
-  addJournalEntry: (entry: Omit<TradeJournalEntry, 'id' | 'date'>) => void;
-  deleteJournalEntry: (id: string) => void;
-  toggleChallengeComplete: (challengeId: string) => void;
+  toggleLessonComplete: (lessonId: string) => Promise<void>;
+  submitQuizScore: (quizId: string, score: number) => Promise<void>;
+  saveAssignment: (lessonId: string, deliverable: string) => Promise<void>;
+  addJournalEntry: (entry: Omit<TradeJournalEntry, 'id' | 'date'>) => Promise<void>;
+  deleteJournalEntry: (id: string) => Promise<void>;
+  toggleChallengeComplete: (challengeId: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithGithub: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, displayName: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfileName: (name: string) => Promise<void>;
   login: (name: string, email: string, provider?: string) => void;
-  logout: () => void;
-  resetProgress: () => void;
+  logout: () => Promise<void>;
+  resetProgress: () => Promise<void>;
   isPhaseUnlocked: (phase: Phase) => boolean;
 }
 
-const DEFAULT_USER: UserProfile = {
-  id: 'user-001',
-  name: 'Solana Operator',
+const GUEST_USER: UserProfile = {
+  id: 'guest',
+  name: 'Unverified Operator',
   email: 'operator@trenchlab.edu',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  joinedDate: '2025-01-10',
-  isGuest: false
+  avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Guest',
+  joinedDate: new Date().toISOString().split('T')[0],
+  isGuest: true
 };
 
-const DEFAULT_PROGRESS: UserProgress = {
+const EMPTY_PROGRESS: UserProgress = {
+  completedLessons: [],
+  completedAssignments: {},
+  quizScores: {},
+  completedChallenges: [],
+  learningStreak: 0,
+  lastActiveDate: new Date().toISOString().split('T')[0],
+  journalEntries: []
+};
+
+// Seed demo progress for unauthenticated preview if needed
+const DEMO_PROGRESS: UserProgress = {
   completedLessons: ['l1-01', 'l1-02', 'l1-03', 'l1-04'],
   completedAssignments: {
     'l1-01': 'Verified block height 304,912,840 on Solscan. Current live TPS measured at 2,420 with 0.000005 SOL base network fee.'
@@ -82,48 +126,17 @@ const DEFAULT_PROGRESS: UserProgress = {
   ]
 };
 
-const STORAGE_KEY_USER = 'trenchlab_user_profile';
-const STORAGE_KEY_PROGRESS = 'trenchlab_user_progress';
-
 const UniversityContext = createContext<UniversityContextType | undefined>(undefined);
 
 export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_USER);
-      return saved ? JSON.parse(saved) : DEFAULT_USER;
-    } catch {
-      return DEFAULT_USER;
-    }
-  });
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<UserProfile>(GUEST_USER);
+  const [progress, setProgress] = useState<UserProgress>(EMPTY_PROGRESS);
+  const userRef = useRef<FirebaseUser | null>(null);
+  userRef.current = firebaseUser;
 
-  const [progress, setProgress] = useState<UserProgress>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_PROGRESS);
-      return saved ? JSON.parse(saved) : DEFAULT_PROGRESS;
-    } catch {
-      return DEFAULT_PROGRESS;
-    }
-  });
-
-  // Save to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
-    } catch (e) {
-      console.error('Failed to save user to storage', e);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(progress));
-    } catch (e) {
-      console.error('Failed to save progress to storage', e);
-    }
-  }, [progress]);
-
-  // Calculate XP: 50 XP per lesson, 100 XP per passed quiz (>75%), 150 XP per challenge, 30 XP per journal entry
+  // Calculate XP & Level dynamically from progress
   const totalLessonsCompleted = progress.completedLessons.length;
   const passedQuizzesCount = Object.values(progress.quizScores).filter(score => (score as number) >= 75).length;
   const challengesCount = progress.completedChallenges.length;
@@ -151,37 +164,150 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const xpToNextLevel = nextLevel ? Math.max(0, (nextLevel.minLessonsRequired * 50 + nextLevel.minQuizzesRequired * 100) - xp) : 0;
   const progressPercentage = Math.min(100, Math.round((totalLessonsCompleted / TOTAL_CURRICULUM_LESSONS) * 100));
 
+  // Sync aggregate user document in Firestore when stats change
+  const syncSummaryToFirestore = useCallback(async (
+    uid: string,
+    curXp: number,
+    curLvl: number,
+    curLvlName: string,
+    lessons: number,
+    quizzes: number,
+    challenges: number
+  ) => {
+    try {
+      await updateUserSummaryDoc(uid, {
+        xp: curXp,
+        level: curLvl,
+        levelName: curLvlName,
+        lessonsCompleted: lessons,
+        quizzesPassed: quizzes,
+        challengesCompleted: challenges
+      });
+    } catch (err) {
+      console.warn('Silent sync to firestore summary failed:', err);
+    }
+  }, []);
+
+  // Subscribe to Firebase Auth State
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setFirebaseUser(fbUser);
+      if (fbUser) {
+        try {
+          // Initialize or fetch user doc from Firestore
+          const { userDoc, isNew } = await getOrCreateUserProfile(fbUser.uid, {
+            displayName: fbUser.displayName || 'Solana Operator',
+            email: fbUser.email || '',
+            photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`
+          });
+
+          setUser({
+            id: fbUser.uid,
+            name: userDoc.displayName || fbUser.displayName || 'Solana Operator',
+            email: userDoc.email || fbUser.email || '',
+            avatarUrl: userDoc.photoURL || fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
+            joinedDate: userDoc.createdAt ? userDoc.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+            isGuest: false
+          });
+
+          if (isNew) {
+            // New operator starts with fresh empty progress
+            setProgress(EMPTY_PROGRESS);
+          } else {
+            // Load real persistent progress from Firestore
+            const loadedProgress = await fetchUserFullProgress(fbUser.uid);
+            // Maintain streak from doc if available
+            loadedProgress.learningStreak = userDoc.streak || (loadedProgress.completedLessons.length > 0 ? 1 : 0);
+            setProgress(loadedProgress);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile or progress from Firestore:', error);
+          // Fallback user state
+          setUser({
+            id: fbUser.uid,
+            name: fbUser.displayName || 'Solana Operator',
+            email: fbUser.email || '',
+            avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
+            joinedDate: new Date().toISOString().split('T')[0],
+            isGuest: false
+          });
+          setProgress(EMPTY_PROGRESS);
+        }
+      } else {
+        // Not authenticated
+        setUser(GUEST_USER);
+        setProgress(EMPTY_PROGRESS);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const isPhaseUnlocked = (phase: Phase): boolean => {
     if (phase.levelRequired <= 1) return true;
     return currentLevel.levelNumber >= phase.levelRequired;
   };
 
-  const toggleLessonComplete = (lessonId: string) => {
-    setProgress(prev => {
-      const exists = prev.completedLessons.includes(lessonId);
-      const updated = exists 
-        ? prev.completedLessons.filter(id => id !== lessonId)
-        : [...prev.completedLessons, lessonId];
-      
-      return {
-        ...prev,
-        completedLessons: updated,
-        lastActiveDate: new Date().toISOString().split('T')[0]
-      };
-    });
+  const toggleLessonComplete = async (lessonId: string) => {
+    const exists = progress.completedLessons.includes(lessonId);
+    const updated = exists 
+      ? progress.completedLessons.filter(id => id !== lessonId)
+      : [...progress.completedLessons, lessonId];
+    
+    const newProgress = {
+      ...progress,
+      completedLessons: updated,
+      learningStreak: Math.max(1, progress.learningStreak),
+      lastActiveDate: new Date().toISOString().split('T')[0]
+    };
+    setProgress(newProgress);
+
+    if (firebaseUser) {
+      await persistLessonProgress(firebaseUser.uid, lessonId, !exists);
+      // Sync summary metrics
+      const newLessonsCount = updated.length;
+      const newXp = newLessonsCount * 50 + passedQuizzesCount * 100 + challengesCount * 150 + journalsCount * 30;
+      await syncSummaryToFirestore(
+        firebaseUser.uid, 
+        newXp, 
+        currentLevel.levelNumber, 
+        currentLevel.title, 
+        newLessonsCount, 
+        passedQuizzesCount, 
+        challengesCount
+      );
+    }
   };
 
-  const submitQuizScore = (quizId: string, score: number) => {
+  const submitQuizScore = async (quizId: string, score: number) => {
+    const updatedScores = {
+      ...progress.quizScores,
+      [quizId]: Math.max(progress.quizScores[quizId] || 0, score)
+    };
+
     setProgress(prev => ({
       ...prev,
-      quizScores: {
-        ...prev.quizScores,
-        [quizId]: Math.max(prev.quizScores[quizId] || 0, score)
-      }
+      quizScores: updatedScores
     }));
+
+    if (firebaseUser) {
+      await persistQuizScore(firebaseUser.uid, quizId, score);
+      const newPassedCount = Object.values(updatedScores).filter(s => (s as number) >= 75).length;
+      const newXp = totalLessonsCompleted * 50 + newPassedCount * 100 + challengesCount * 150 + journalsCount * 30;
+      await syncSummaryToFirestore(
+        firebaseUser.uid, 
+        newXp, 
+        currentLevel.levelNumber, 
+        currentLevel.title, 
+        totalLessonsCompleted, 
+        newPassedCount, 
+        challengesCount
+      );
+    }
   };
 
-  const saveAssignment = (lessonId: string, deliverable: string) => {
+  const saveAssignment = async (lessonId: string, deliverable: string) => {
     setProgress(prev => ({
       ...prev,
       completedAssignments: {
@@ -189,77 +315,172 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         [lessonId]: deliverable
       }
     }));
+
+    if (firebaseUser) {
+      await persistLessonProgress(firebaseUser.uid, lessonId, true, deliverable);
+    }
   };
 
-  const addJournalEntry = (entry: Omit<TradeJournalEntry, 'id' | 'date'>) => {
+  const addJournalEntry = async (entry: Omit<TradeJournalEntry, 'id' | 'date'>) => {
     const newEntry: TradeJournalEntry = {
       ...entry,
       id: `j-${Date.now()}`,
       date: new Date().toISOString().split('T')[0]
     };
+
     setProgress(prev => ({
       ...prev,
       journalEntries: [newEntry, ...prev.journalEntries]
     }));
+
+    if (firebaseUser) {
+      await persistJournalEntry(firebaseUser.uid, newEntry);
+      const newJournalsCount = journalsCount + 1;
+      const newXp = totalLessonsCompleted * 50 + passedQuizzesCount * 100 + challengesCount * 150 + newJournalsCount * 30;
+      await syncSummaryToFirestore(
+        firebaseUser.uid, 
+        newXp, 
+        currentLevel.levelNumber, 
+        currentLevel.title, 
+        totalLessonsCompleted, 
+        passedQuizzesCount, 
+        challengesCount
+      );
+    }
   };
 
-  const deleteJournalEntry = (id: string) => {
+  const deleteJournalEntry = async (id: string) => {
     setProgress(prev => ({
       ...prev,
       journalEntries: prev.journalEntries.filter(j => j.id !== id)
     }));
+
+    if (firebaseUser) {
+      await deleteJournalEntryDoc(firebaseUser.uid, id);
+    }
   };
 
-  const toggleChallengeComplete = (challengeId: string) => {
-    setProgress(prev => {
-      const exists = prev.completedChallenges.includes(challengeId);
-      return {
-        ...prev,
-        completedChallenges: exists 
-          ? prev.completedChallenges.filter(id => id !== challengeId)
-          : [...prev.completedChallenges, challengeId]
-      };
-    });
+  const toggleChallengeComplete = async (challengeId: string) => {
+    const exists = progress.completedChallenges.includes(challengeId);
+    const updated = exists 
+      ? progress.completedChallenges.filter(id => id !== challengeId)
+      : [...progress.completedChallenges, challengeId];
+
+    setProgress(prev => ({
+      ...prev,
+      completedChallenges: updated
+    }));
+
+    if (firebaseUser) {
+      await persistChallengeCompletion(firebaseUser.uid, challengeId, !exists);
+      const newChallengesCount = updated.length;
+      const newXp = totalLessonsCompleted * 50 + passedQuizzesCount * 100 + newChallengesCount * 150 + journalsCount * 30;
+      await syncSummaryToFirestore(
+        firebaseUser.uid, 
+        newXp, 
+        currentLevel.levelNumber, 
+        currentLevel.title, 
+        totalLessonsCompleted, 
+        passedQuizzesCount, 
+        newChallengesCount
+      );
+    }
   };
 
-  const login = (name: string, email: string, provider: string = 'Credentials') => {
-    setUser({
-      id: `user-${Date.now()}`,
-      name: name || 'Trench Trader',
-      email: email || 'trader@solana.org',
-      avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${name || 'SolanaTrader'}`,
-      joinedDate: new Date().toISOString().split('T')[0],
-      isGuest: false
-    });
+  const signInWithGoogle = async () => {
+    const cred = await signInWithPopup(auth, googleProvider);
+    if (cred.user) {
+      await getOrCreateUserProfile(cred.user.uid, {
+        displayName: cred.user.displayName || 'Google Operator',
+        email: cred.user.email || '',
+        photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
+      });
+    }
   };
 
-  const logout = () => {
-    setUser({
-      id: 'guest',
-      name: 'Guest Observer',
-      email: 'guest@trenchlab.edu',
-      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Guest',
-      joinedDate: new Date().toISOString().split('T')[0],
-      isGuest: true
-    });
+  const signInWithGithub = async () => {
+    const cred = await signInWithPopup(auth, githubProvider);
+    if (cred.user) {
+      await getOrCreateUserProfile(cred.user.uid, {
+        displayName: cred.user.displayName || 'GitHub Trencher',
+        email: cred.user.email || '',
+        photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
+      });
+    }
   };
 
-  const resetProgress = () => {
-    setProgress({
-      completedLessons: [],
-      completedAssignments: {},
-      quizScores: {},
-      completedChallenges: [],
-      learningStreak: 1,
-      lastActiveDate: new Date().toISOString().split('T')[0],
-      journalEntries: []
-    });
+  const signInWithEmail = async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const registerWithEmail = async (email: string, pass: string, displayName: string) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    if (cred.user) {
+      await updateProfile(cred.user, { displayName });
+      await getOrCreateUserProfile(cred.user.uid, {
+        displayName: displayName || 'Operator',
+        email,
+        photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
+      });
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
+  const updateProfileName = async (name: string) => {
+    if (firebaseUser) {
+      await updateProfile(firebaseUser, { displayName: name });
+      await updateUserSummaryDoc(firebaseUser.uid, { displayName: name });
+      setUser(prev => ({ ...prev, name }));
+    } else {
+      setUser(prev => ({ ...prev, name }));
+    }
+  };
+
+  // Backwards compatibility shim for existing components calling login(...)
+  const login = (name: string, email: string) => {
+    setUser(prev => ({
+      ...prev,
+      name: name || prev.name,
+      email: email || prev.email
+    }));
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+    setFirebaseUser(null);
+    setUser(GUEST_USER);
+    setProgress(EMPTY_PROGRESS);
+  };
+
+  const resetProgress = async () => {
+    setProgress(EMPTY_PROGRESS);
+    if (firebaseUser) {
+      await updateUserSummaryDoc(firebaseUser.uid, {
+        xp: 0,
+        level: 1,
+        levelName: 'Foundation',
+        streak: 0,
+        lessonsCompleted: 0,
+        quizzesPassed: 0,
+        challengesCompleted: 0
+      });
+    }
   };
 
   return (
     <UniversityContext.Provider
       value={{
         user,
+        firebaseUser,
+        authLoading,
+        isAuthenticated: Boolean(firebaseUser),
         progress,
         currentLevel,
         nextLevel,
@@ -273,6 +494,12 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addJournalEntry,
         deleteJournalEntry,
         toggleChallengeComplete,
+        signInWithGoogle,
+        signInWithGithub,
+        signInWithEmail,
+        registerWithEmail,
+        resetPassword,
+        updateProfileName,
         login,
         logout,
         resetProgress,

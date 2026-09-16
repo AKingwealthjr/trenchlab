@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "path": "users/{userId}",
+      "description": "Operator profile record containing aggregate learning progress, XP, and identity details.",
+      "fields": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "level": { "type": "number" },
+        "levelName": { "type": "string", "maxLength": 50 },
+        "xp": { "type": "number" },
+        "streak": { "type": "number" },
+        "lessonsCompleted": { "type": "number" },
+        "quizzesPassed": { "type": "number" },
+        "challengesCompleted": { "type": "number" }
+      }
+    },
+    "LessonProgress": {
+      "path": "users/{userId}/progress/{lessonId}",
+      "description": "Progress record for an individual lesson.",
+      "fields": {
+        "lessonId": { "type": "string", "maxLength": 64 },
+        "completed": { "type": "boolean" },
+        "completedAt": { "type": "string", "maxLength": 50 },
+        "assignmentSubmission": { "type": "string", "maxLength": 4000 }
+      }
+    },
+    "QuizProgress": {
+      "path": "users/{userId}/quizzes/{quizId}",
+      "description": "Score record for an individual phase quiz.",
+      "fields": {
+        "quizId": { "type": "string", "maxLength": 64 },
+        "score": { "type": "number" },
+        "passed": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      }
+    },
+    "ChallengeProgress": {
+      "path": "users/{userId}/challenges/{challengeId}",
+      "description": "Completion record for a practical challenge.",
+      "fields": {
+        "challengeId": { "type": "string", "maxLength": 64 },
+        "completed": { "type": "boolean" },
+        "completedAt": { "type": "string", "maxLength": 50 }
+      }
+    },
+    "TradeJournal": {
+      "path": "users/{userId}/journal/{tradeId}",
+      "description": "Trade log record documented in the operator's trade journal.",
+      "fields": {
+        "id": { "type": "string", "maxLength": 64 },
+        "date": { "type": "string", "maxLength": 50 },
+        "tokenSymbol": { "type": "string", "maxLength": 30 },
+        "contractAddress": { "type": "string", "maxLength": 100 },
+        "entryPrice": { "type": "number" },
+        "exitPrice": { "type": "number" },
+        "positionSizeUsd": { "type": "number" },
+        "reasonForEntry": { "type": "string", "maxLength": 2000 },
+        "invalidation": { "type": "string", "maxLength": 1000 },
+        "takeProfitPlan": { "type": "string", "maxLength": 1000 },
+        "result": { "type": "string", "maxLength": 20 },
+        "pnlUsd": { "type": "number" },
+        "pnlPercent": { "type": "number" },
+        "emotion": { "type": "string", "maxLength": 50 },
+        "whatILearned": { "type": "string", "maxLength": 2000 }
+      }
+    }
+  }
+}
