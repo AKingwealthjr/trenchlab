@@ -37,14 +37,17 @@ export function getFriendlyAuthErrorMessage(error: unknown): string {
   if (errStr.includes('auth/popup-blocked')) {
     return 'Popup window was blocked by browser. Please allow popups for authentication.';
   }
+  if (errStr.includes('auth/unauthorized-domain')) {
+    return 'Domain unauthorized: Add your deployment domain (e.g. thetrenchlab.vercel.app) to Firebase Console > Authentication > Settings > Authorized domains.';
+  }
   if (errStr.includes('auth/network-request-failed')) {
-    return 'Terminal network error. Verify your internet connection and try again.';
+    return 'Network/Cross-origin error: Ensure thetrenchlab.vercel.app is added to Firebase Authorized Domains, and check if an ad-blocker or brave shields is blocking the popup.';
   }
   if (errStr.includes('auth/too-many-requests')) {
     return 'Too many consecutive attempts. Access temporarily throttled for security.';
   }
   if (errStr.includes('auth/operation-not-allowed')) {
-    return 'Provider authentication is being provisioned. Please try another method.';
+    return 'Sign-in provider not enabled. Please enable Google or GitHub in Firebase Console > Authentication > Sign-in method.';
   }
   if (errStr.includes('auth/account-exists-with-different-credential')) {
     return 'An account already exists with the same email using a different sign-in method.';
