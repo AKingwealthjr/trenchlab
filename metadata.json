@@ -1,0 +1,6 @@
+{
+  "name": "TRENCHLAB",
+  "description": "The Memecoin Trading University — Interactive, structured learning platform for Solana on-chain and memecoin trading.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
