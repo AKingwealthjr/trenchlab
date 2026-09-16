@@ -41,13 +41,13 @@ export function getFriendlyAuthErrorMessage(error: unknown): string {
     return 'Domain unauthorized: Add your deployment domain (e.g. thetrenchlab.vercel.app) to Firebase Console > Authentication > Settings > Authorized domains.';
   }
   if (errStr.includes('auth/network-request-failed')) {
-    return 'Network/Cross-origin error: Ensure thetrenchlab.vercel.app is added to Firebase Authorized Domains, and check if an ad-blocker or brave shields is blocking the popup.';
+    return 'Cross-origin storage blocked by browser: Chrome or Safari partitioned third-party cookies during popup. Please try clicking Google again (which will use direct redirect) or sign in with email.';
   }
   if (errStr.includes('auth/too-many-requests')) {
     return 'Too many consecutive attempts. Access temporarily throttled for security.';
   }
   if (errStr.includes('auth/operation-not-allowed')) {
-    return 'Sign-in provider not enabled. Please enable Google or GitHub in Firebase Console > Authentication > Sign-in method.';
+    return 'GitHub OAuth is not yet enabled in your Firebase project. Enable GitHub in Firebase Console > Authentication > Sign-in method, or use Google or Email.';
   }
   if (errStr.includes('auth/account-exists-with-different-credential')) {
     return 'An account already exists with the same email using a different sign-in method.';

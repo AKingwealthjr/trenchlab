@@ -6,6 +6,8 @@ import {
   auth, 
   onAuthStateChanged, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   googleProvider, 
   githubProvider,
   signInWithEmailAndPassword,
@@ -46,6 +48,7 @@ interface UniversityContextType {
   deleteJournalEntry: (id: string) => Promise<void>;
   toggleChallengeComplete: (challengeId: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithGoogleRedirect: () => Promise<void>;
   signInWithGithub: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, displayName: string) => Promise<void>;
@@ -190,6 +193,19 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Subscribe to Firebase Auth State
   useEffect(() => {
+    // Process redirect sign-in result if returning from full-page redirect
+    getRedirectResult(auth).then(async (cred) => {
+      if (cred?.user) {
+        await getOrCreateUserProfile(cred.user.uid, {
+          displayName: cred.user.displayName || 'Google Operator',
+          email: cred.user.email || '',
+          photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
+        });
+      }
+    }).catch((err) => {
+      console.warn('Redirect sign-in notice:', err);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
@@ -387,25 +403,55 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const signInWithGoogleRedirect = async () => {
+    await signInWithRedirect(auth, googleProvider);
+  };
+
   const signInWithGoogle = async () => {
-    const cred = await signInWithPopup(auth, googleProvider);
-    if (cred.user) {
-      await getOrCreateUserProfile(cred.user.uid, {
-        displayName: cred.user.displayName || 'Google Operator',
-        email: cred.user.email || '',
-        photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
-      });
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      if (cred.user) {
+        await getOrCreateUserProfile(cred.user.uid, {
+          displayName: cred.user.displayName || 'Google Operator',
+          email: cred.user.email || '',
+          photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
+        });
+      }
+    } catch (err: unknown) {
+      const errCode = typeof err === 'object' && err !== null && 'code' in err 
+        ? String((err as { code: unknown }).code) 
+        : '';
+      // If browser partitions cross-origin storage or blocks the popup window,
+      // seamlessly transition to standard OAuth redirect flow:
+      if (errCode === 'auth/network-request-failed' || errCode === 'auth/popup-blocked') {
+        console.warn('Cross-origin popup interrupted by browser. Redirecting via OAuth...');
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+      throw err;
     }
   };
 
   const signInWithGithub = async () => {
-    const cred = await signInWithPopup(auth, githubProvider);
-    if (cred.user) {
-      await getOrCreateUserProfile(cred.user.uid, {
-        displayName: cred.user.displayName || 'GitHub Trencher',
-        email: cred.user.email || '',
-        photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
-      });
+    try {
+      const cred = await signInWithPopup(auth, githubProvider);
+      if (cred.user) {
+        await getOrCreateUserProfile(cred.user.uid, {
+          displayName: cred.user.displayName || 'GitHub Trencher',
+          email: cred.user.email || '',
+          photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cred.user.uid}`
+        });
+      }
+    } catch (err: unknown) {
+      const errCode = typeof err === 'object' && err !== null && 'code' in err 
+        ? String((err as { code: unknown }).code) 
+        : '';
+      if (errCode === 'auth/network-request-failed' || errCode === 'auth/popup-blocked') {
+        console.warn('Cross-origin popup interrupted by browser. Redirecting via GitHub OAuth...');
+        await signInWithRedirect(auth, githubProvider);
+        return;
+      }
+      throw err;
     }
   };
 
@@ -495,6 +541,7 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         deleteJournalEntry,
         toggleChallengeComplete,
         signInWithGoogle,
+        signInWithGoogleRedirect,
         signInWithGithub,
         signInWithEmail,
         registerWithEmail,
