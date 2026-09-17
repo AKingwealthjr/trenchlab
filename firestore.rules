@@ -15,8 +15,21 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'precilexis@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Curated lesson resources
+    match /lesson_resources/{resourceId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(resourceId);
     }
 
     // User profile document and personal progress subcollections

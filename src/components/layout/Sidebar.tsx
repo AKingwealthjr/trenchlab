@@ -10,7 +10,8 @@ import {
   Award,
   ChevronRight,
   Shield,
-  Layers
+  Layers,
+  Tv
 } from 'lucide-react';
 import { useUniversity } from '../../context/UniversityContext';
 
@@ -21,7 +22,8 @@ export type NavigationTab =
   | 'journal'
   | 'challenges'
   | 'tools'
-  | 'glossary';
+  | 'glossary'
+  | 'admin-content-studio';
 
 interface SidebarProps {
   activeTab: NavigationTab;
@@ -80,6 +82,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Trading Glossary',
       icon: BookMarked,
       badge: null
+    },
+    {
+      id: 'admin-content-studio' as NavigationTab,
+      label: 'Content Studio',
+      icon: Tv,
+      badge: 'ADMIN'
     }
   ];
 

@@ -10,6 +10,58 @@ export type UserLevel =
   | 'LEVEL 07: ADVANCED TRENCHER'
   | 'LEVEL 08: SYSTEM BUILDER';
 
+export type ResourceType = 'EXTERNAL_YOUTUBE' | 'TRENCHLAB_ORIGINAL';
+
+export type ResourceStatus = 
+  | 'DISCOVERED'
+  | 'REVIEWED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ARCHIVED';
+
+export type LessonResourceSummaryStatus = 'RESOURCE_READY' | 'NEEDS_REVIEW' | 'NEEDS_RESOURCE';
+
+export interface LessonResource {
+  id: string;
+  lessonId: string;
+  provider: 'youtube' | 'trenchlab';
+  providerVideoId: string;
+  title: string;
+  description: string;
+  channelName: string;
+  thumbnailUrl: string;
+  youtubeUrl: string;
+  embedUrl: string;
+  durationSeconds?: number;
+  durationFormatted?: string;
+  publishedAt: string;
+  relevanceScore: number;
+  qualityScore: number;
+  resourceType: ResourceType;
+  status: ResourceStatus;
+  isPrimary: boolean;
+  searchQuery: string;
+  whyUseful?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LessonSearchProfile {
+  lessonId: string;
+  lessonTitle: string;
+  lessonDescription: string;
+  phaseId: number;
+  phaseTitle: string;
+  topic: string;
+  difficulty: Difficulty;
+  learningObjective: string;
+  primarySearchQuery: string;
+  secondarySearchQueries: string[];
+  negativeKeywords: string[];
+  preferredVideoLength: 'SHORT' | 'MEDIUM' | 'LONG';
+  preferredContentType: string;
+}
+
 export interface VideoResource {
   title: string;
   creator: string;

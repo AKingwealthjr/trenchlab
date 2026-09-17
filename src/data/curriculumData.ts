@@ -946,6 +946,135 @@ const INITIAL_PHASES: Phase[] = [
           instructions: 'Find 2 real breakouts that sustained trend continuation, and 2 fakeouts that trapped buyers. Note the volume differences.',
           deliverables: ['4-chart comparison writeup highlighting volume and wick behavior.']
         }
+      },
+      {
+        id: 'l2-10',
+        phaseId: 2,
+        lessonNumber: 10,
+        title: 'Fibonacci Retracements & The Golden Pocket (0.618 - 0.65)',
+        difficulty: 'INTERMEDIATE',
+        estimatedTime: '18 min',
+        objectives: [
+          'Plot anchor swings accurately from true impulse low to impulse high',
+          'Identify confluence between the 0.618 golden pocket and prior horizontal market structure',
+          'Avoid drawing Fib levels across messy consolidation or low-volume wicks'
+        ],
+        videos: [],
+        keyConcepts: ['Impulse Wave', 'Golden Pocket (0.618 - 0.65)', 'Anchor Points', 'Structural Confluence'],
+        deepDive: [
+          'The Fibonacci retracement tool measures the depth of a counter-trend pullback relative to the preceding aggressive impulse wave.',
+          'In high-beta crypto and memecoins, the 0.618 to 0.65 zone acts as the institutional "discount zone" where smart money re-accumulates after retail sells out in panic.',
+          'Crucially, never trade a Fibonacci level in isolation. A Fib level is purely mathematical; it only gains real auction weight when it aligns with an old resistance-turned-support level or high-volume node.'
+        ],
+        realWorldExample: 'A new token surges from $0.01 to $0.10, then corrects sharply to $0.044. Traders who bought the top panic-sell. The 0.618 retracement sits at $0.0444, perfectly aligning with the previous 15-minute resistance shelf. Buyers step in aggressively and the price rebounds 120%.',
+        commonMistakes: [
+          'Drawing Fibonacci across microscopic 1-minute noise instead of clean market structure swings.',
+          'Assuming every Fib level will automatically hold without waiting for candlestick confirmation.'
+        ],
+        checkQuestions: [
+          {
+            question: 'Why is the 0.618 to 0.65 Fibonacci zone referred to as the Golden Pocket?',
+            options: [
+              'Because it is guaranteed to produce a 100x return',
+              'Because it represents the mathematically optimal deep retracement where risk-to-reward for trend continuation is highest',
+              'Because it only works on Bitcoin and Ethereum',
+              'Because token developers cannot sell at that level'
+            ],
+            correctIndex: 1,
+            explanation: 'The golden pocket offers an optimal balance: the pullback is deep enough to offer high R:R, but shallow enough that the prevailing trend structure remains intact.'
+          }
+        ],
+        assignment: {
+          title: 'Golden Pocket Chart Mapping',
+          instructions: 'Identify 3 successful golden pocket bounces on Solana charts, marking anchor high, anchor low, and the confluence zone.',
+          deliverables: ['Screenshots of 3 charted setups with entry invalidation levels.']
+        }
+      },
+      {
+        id: 'l2-11',
+        phaseId: 2,
+        lessonNumber: 11,
+        title: 'Trendlines vs Horizontal Levels: Dynamic Support Traps',
+        difficulty: 'INTERMEDIATE',
+        estimatedTime: '16 min',
+        objectives: [
+          'Differentiate between objective horizontal price levels and subjective trendlines',
+          'Understand why diagonal trendlines are easily manipulated by liquidity hunters',
+          'Combine horizontal order blocks with dynamic trendline breaks for high-probability entries'
+        ],
+        videos: [],
+        keyConcepts: ['Horizontal S/R', 'Diagonal Trendlines', 'Dynamic Traps', 'Subjectivity Bias'],
+        deepDive: [
+          'Horizontal levels are objective price points where specific quantities of liquidity, limit orders, and stop losses exist in the historical order book.',
+          'Diagonal trendlines, by contrast, depend entirely on how individual traders draw their angles, which scale they use (log vs linear), and which wick tips they connect. This subjectivity makes dynamic lines vulnerable to liquidity sweeps.',
+          'Professional on-chain operators treat diagonal trendlines as sentiment indicators rather than hard execution triggers. When a crowd-favorite trendline snaps, it triggers stop cascades directly into real horizontal liquidity pools.'
+        ],
+        realWorldExample: 'Retail traders draw an ascending trendline on a hyped memecoin and place tight stops right below it. A smart money wallet market sells 50 SOL, slicing through the trendline by 5%, triggering retail stops into their waiting limit bids at horizontal support.',
+        commonMistakes: [
+          'Relying solely on diagonal trendlines while ignoring clean horizontal support floors.',
+          'Redrawing trendline angles after price breaks them to justify staying in a losing trade.'
+        ],
+        checkQuestions: [
+          {
+            question: 'Why are horizontal support levels generally more reliable than diagonal trendlines?',
+            options: [
+              'Horizontal levels represent fixed price points where resting limit orders and historical volume accumulated, whereas diagonals are highly subjective.',
+              'Horizontal levels are enforced by blockchain smart contracts.',
+              'Diagonal lines only work on CEXs.',
+              'Trading bots cannot see horizontal levels.'
+            ],
+            correctIndex: 0,
+            explanation: 'Horizontal levels reflect exact price coordinates where buyers and sellers transacted, unlike diagonals which vary based on chart scaling.'
+          }
+        ],
+        assignment: {
+          title: 'Trendline Trap Case Study',
+          instructions: 'Document an instance where an ascending trendline broke, but price immediately recovered after hitting horizontal support.',
+          deliverables: ['1-page breakdown comparing the trendline breakdown vs horizontal reclaim.']
+        }
+      },
+      {
+        id: 'l2-12',
+        phaseId: 2,
+        lessonNumber: 12,
+        title: 'Multi-Timeframe Chart Confluence: From Macro Bias to Low-Timeframe Execution',
+        difficulty: 'ADVANCED',
+        estimatedTime: '22 min',
+        objectives: [
+          'Establish higher timeframe (1H/4H) directional bias before zooming in',
+          'Use the 5M/15M charts to identify structural zones and liquidity pools',
+          'Refine entry timing and invalidation on the 1M chart without getting chopped up'
+        ],
+        videos: [],
+        keyConcepts: ['Top-Down Analysis', 'HTF Bias', 'LTF Execution', 'Noise Filtering', 'Confluence'],
+        deepDive: [
+          'Trading solely on the 1-minute chart is the fastest way for beginner traders to lose capital. The 1M chart is dominated by high-frequency bots, snipers, and random liquidity ripples.',
+          'A professional top-down framework starts at the 1-Hour or 4-Hour timeframe to establish the dominant auction trend: is the asset accumulating, distributing, or trending?',
+          'Once the macro zone is reached, drop down to the 15-minute chart to identify key swing points. Finally, utilize the 1-minute or 5-minute chart solely for precise execution, ensuring tight invalidation against swing lows.'
+        ],
+        realWorldExample: 'A trader spots a 1-minute bullish engulfing candle on a memecoin and buys, only to get crushed minutes later. If they had checked the 1-hour chart, they would have seen the price was testing a massive multi-day resistance level that had rejected price four times.',
+        commonMistakes: [
+          'Entering trades based on 1-minute patterns that directly oppose the 1-hour structural trend.',
+          'Suffering analysis paralysis by trying to monitor ten different timeframes simultaneously.'
+        ],
+        checkQuestions: [
+          {
+            question: 'What is the primary objective of top-down multi-timeframe analysis?',
+            options: [
+              'To find a timeframe that makes every trade look profitable',
+              'To ensure low-timeframe execution aligns with high-timeframe structural momentum and key liquidity zones',
+              'To trade 50 times per hour across different tabs',
+              'To calculate gas fees on different hours of the day'
+            ],
+            correctIndex: 1,
+            explanation: 'High-timeframe structure dictates the path of least resistance; low-timeframe charts are strictly for entry precision and stop-loss placement.'
+          }
+        ],
+        assignment: {
+          title: 'Multi-Timeframe Execution Journal',
+          instructions: 'Perform top-down analysis on 2 Solana tokens: capture 1H context, 15M structure, and 1M entry trigger.',
+          deliverables: ['Detailed confluence report for both assets with annotated charts.']
+        }
       }
     ]
   }

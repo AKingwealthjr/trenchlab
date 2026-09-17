@@ -67,6 +67,34 @@
         "emotion": { "type": "string", "maxLength": 50 },
         "whatILearned": { "type": "string", "maxLength": 2000 }
       }
+    },
+    "LessonResource": {
+      "path": "lesson_resources/{resourceId}",
+      "description": "Curated educational video or proprietary resource attached to a curriculum lesson.",
+      "fields": {
+        "id": { "type": "string", "maxLength": 64 },
+        "lessonId": { "type": "string", "maxLength": 64 },
+        "provider": { "type": "string", "maxLength": 32 },
+        "providerVideoId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "channelName": { "type": "string", "maxLength": 150 },
+        "thumbnailUrl": { "type": "string", "maxLength": 1000 },
+        "youtubeUrl": { "type": "string", "maxLength": 1000 },
+        "embedUrl": { "type": "string", "maxLength": 1000 },
+        "durationSeconds": { "type": "number" },
+        "durationFormatted": { "type": "string", "maxLength": 30 },
+        "publishedAt": { "type": "string", "maxLength": 50 },
+        "relevanceScore": { "type": "number" },
+        "qualityScore": { "type": "number" },
+        "resourceType": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "isPrimary": { "type": "boolean" },
+        "searchQuery": { "type": "string", "maxLength": 300 },
+        "whyUseful": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      }
     }
   }
 }

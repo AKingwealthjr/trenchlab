@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   Clock, 
@@ -11,9 +11,11 @@ import {
   Save, 
   Play,
   FileCheck2,
-  BookOpen
+  BookOpen,
+  Tv,
+  Award
 } from 'lucide-react';
-import { Lesson, Phase } from '../../types';
+import { Lesson, Phase, LessonResource } from '../../types';
 import { useUniversity } from '../../context/UniversityContext';
 
 interface LessonViewerModalProps {
@@ -37,11 +39,31 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
   const [assignmentInput, setAssignmentInput] = useState(currentAssignmentText);
   const [savedAssignmentNotice, setSavedAssignmentNotice] = useState(false);
   const [selectedCheckOption, setSelectedCheckOption] = useState<number | null>(null);
+  const [dynamicResource, setDynamicResource] = useState<LessonResource | null>(null);
 
   // Lesson indexing
   const currentIdx = phase.lessons.findIndex(l => l.id === lesson.id);
   const prevLesson = currentIdx > 0 ? phase.lessons[currentIdx - 1] : null;
   const nextLesson = currentIdx < phase.lessons.length - 1 ? phase.lessons[currentIdx + 1] : null;
+
+  // Fetch approved dynamic resource from server cache
+  useEffect(() => {
+    let mounted = true;
+    fetch(`/api/discovery/resources?lessonId=${lesson.id}&status=APPROVED`)
+      .then(r => r.json())
+      .then(data => {
+        if (mounted && data.resources && data.resources.length > 0) {
+          const primary = data.resources.find((r: LessonResource) => r.isPrimary) || data.resources[0];
+          setDynamicResource(primary);
+        } else {
+          setDynamicResource(null);
+        }
+      })
+      .catch(() => {
+        if (mounted) setDynamicResource(null);
+      });
+    return () => { mounted = false; };
+  }, [lesson.id]);
 
   const handleSaveAssignment = () => {
     saveAssignment(lesson.id, assignmentInput);
@@ -113,8 +135,56 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
             </div>
           </div>
 
-          {/* Video Player Section */}
-          {primaryVideo && (
+          {/* Video Player Section (Dynamic Curated Resource or Hardcoded Fallback) */}
+          {dynamicResource ? (
+            <div className="bg-[#0A0A0B] border border-emerald-500/30 rounded-xl overflow-hidden shadow-lg">
+              <div className="aspect-video w-full bg-black relative">
+                <iframe
+                  className="w-full h-full"
+                  src={`${dynamicResource.embedUrl}?rel=0&modestbranding=1`}
+                  title={dynamicResource.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+
+              {/* Video Info Bar */}
+              <div className="p-4 bg-[#131316] border-t border-[#242429] space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                  <div className="flex items-center space-x-2">
+                    <span className="bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 px-2 py-0.5 rounded font-bold flex items-center space-x-1">
+                      <Award className="w-3 h-3" />
+                      <span>VERIFIED MASTERCLASS</span>
+                    </span>
+                    <span className="text-[#8E8E98]">by</span>
+                    <span className="text-[#EDEDEF] font-bold">{dynamicResource.channelName}</span>
+                    <span className="text-[#E8A33D]">({dynamicResource.durationFormatted})</span>
+                  </div>
+
+                  <a
+                    href={dynamicResource.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#E8A33D] hover:underline flex items-center space-x-1"
+                  >
+                    <span>Watch on YouTube</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                <div className="text-sm font-semibold text-[#EDEDEF]">
+                  {dynamicResource.title}
+                </div>
+
+                {dynamicResource.whyUseful && (
+                  <div className="text-xs text-[#9A9AA3] font-sans bg-[#0A0A0B] p-2.5 rounded-lg border border-[#242429]">
+                    <span className="text-[#E8A33D] font-mono font-bold mr-1">CURATOR NOTES:</span>
+                    {dynamicResource.whyUseful}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : primaryVideo ? (
             <div className="bg-[#0A0A0B] border border-[#242429] rounded-xl overflow-hidden">
               <div className="aspect-video w-full bg-black relative">
                 {primaryVideo.youtubeId ? (
@@ -162,7 +232,7 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
                 </a>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Objectives */}
           <div className="bg-[#0A0A0B] border border-[#242429] p-4 rounded-xl space-y-2">

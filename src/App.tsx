@@ -9,6 +9,7 @@ import { TradeJournal } from './components/journal/TradeJournal';
 import { ChallengesView } from './components/challenges/ChallengesView';
 import { ToolsView } from './components/tools/ToolsView';
 import { GlossaryView } from './components/glossary/GlossaryView';
+import { ContentStudio } from './components/admin/ContentStudio';
 import { AuthModal } from './components/auth/AuthModal';
 import { LoginPage } from './components/auth/LoginPage';
 import { Menu, Terminal, Loader2 } from 'lucide-react';
@@ -23,6 +24,7 @@ function mapPathToTab(path: string): NavigationTab | 'login' | 'register' {
   if (cleanPath === '/challenges') return 'challenges';
   if (cleanPath === '/tools') return 'tools';
   if (cleanPath === '/glossary') return 'glossary';
+  if (cleanPath === '/admin/content-studio' || cleanPath.startsWith('/admin')) return 'admin-content-studio';
   if (cleanPath === '/dashboard' || cleanPath === '/progress' || cleanPath === '/settings' || cleanPath === '') return 'dashboard';
   return 'dashboard';
 }
@@ -36,6 +38,7 @@ function mapTabToPath(tab: NavigationTab): string {
     case 'challenges': return '/challenges';
     case 'tools': return '/tools';
     case 'glossary': return '/glossary';
+    case 'admin-content-studio': return '/admin/content-studio';
     default: return '/dashboard';
   }
 }
@@ -212,6 +215,10 @@ function UniversityApp() {
 
           {activeTab === 'glossary' && (
             <GlossaryView />
+          )}
+
+          {activeTab === 'admin-content-studio' && (
+            <ContentStudio />
           )}
         </main>
       </div>
