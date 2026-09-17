@@ -1,5 +1,6 @@
 import { CandidateVideo, parseYouTubeDuration, scoreVideoCandidate, ScoredVideo } from '../lib/videoScoring';
-import { LessonSearchProfile } from '../types';
+import { Lesson, LessonSearchProfile } from '../types';
+import { generateSearchProfile } from '../lib/searchProfiles';
 
 export interface YouTubeSearchResult {
   success: boolean;
@@ -9,26 +10,19 @@ export interface YouTubeSearchResult {
   quotaExceeded?: boolean;
 }
 
+// In-memory cache for YouTube responses: cacheKey = youtube:${lessonId}:${query}
+const youtubeResponseCache = new Map<string, ScoredVideo[]>();
+
 /**
- * Searches YouTube Data API v3 strictly server-side using YOUTUBE_API_KEY.
+ * Executes a single YouTube Data API v3 query with details lookup and candidate scoring.
  */
-export async function searchYouTubeForLesson(
+async function executeYouTubeQuery(
+  query: string,
   profile: LessonSearchProfile,
-  maxResults = 5
-): Promise<YouTubeSearchResult> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-
-  if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_YOUTUBE_API_KEY') {
-    return {
-      success: false,
-      apiKeyConfigured: false,
-      videos: [],
-      error: 'YOUTUBE_API_KEY is not configured in server environment (.env). Configure an API key from Google Cloud Console to enable live discovery.'
-    };
-  }
-
+  apiKey: string,
+  maxResults: number
+): Promise<{ videos: ScoredVideo[]; rawCount: number; quotaExceeded: boolean; error?: string }> {
   try {
-    const query = profile.primarySearchQuery;
     const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search');
     searchUrl.searchParams.set('part', 'snippet');
     searchUrl.searchParams.set('q', query);
@@ -42,11 +36,10 @@ export async function searchYouTubeForLesson(
 
     if (!searchRes.ok) {
       const errText = await searchRes.text();
-      let isQuota = searchRes.status === 403 && (errText.includes('quota') || errText.includes('rateLimitExceeded'));
+      const isQuota = searchRes.status === 403 && (errText.includes('quota') || errText.includes('rateLimitExceeded'));
       return {
-        success: false,
-        apiKeyConfigured: true,
         videos: [],
+        rawCount: 0,
         quotaExceeded: isQuota,
         error: isQuota 
           ? 'YouTube Data API daily quota limit reached.' 
@@ -57,11 +50,7 @@ export async function searchYouTubeForLesson(
     const searchData = await searchRes.json();
     const items = searchData.items || [];
     if (items.length === 0) {
-      return {
-        success: true,
-        apiKeyConfigured: true,
-        videos: []
-      };
+      return { videos: [], rawCount: 0, quotaExceeded: false };
     }
 
     // Extract video IDs to fetch detailed info (durations, embeddability)
@@ -115,26 +104,138 @@ export async function searchYouTubeForLesson(
       };
 
       const scored = scoreVideoCandidate(candidate, profile);
-      scoredVideos.push(scored);
+      // Filter out low relevance candidates (score < 50)
+      if (scored.relevanceScore >= 50 && scored.isEligible) {
+        scoredVideos.push(scored);
+      }
     }
 
     // Sort by relevanceScore descending
     scoredVideos.sort((a, b) => (b.relevanceScore + b.qualityScore) - (a.relevanceScore + a.qualityScore));
 
     return {
-      success: true,
-      apiKeyConfigured: true,
-      videos: scoredVideos
+      videos: scoredVideos,
+      rawCount: items.length,
+      quotaExceeded: false
     };
-
   } catch (err: any) {
     return {
-      success: false,
-      apiKeyConfigured: true,
       videos: [],
+      rawCount: 0,
+      quotaExceeded: false,
       error: err instanceof Error ? err.message : String(err)
     };
   }
+}
+
+/**
+ * Searches YouTube Data API v3 strictly server-side using YOUTUBE_API_KEY.
+ * Receives either a Lesson or a LessonSearchProfile.
+ * Never uses a global video variable; cached strictly by lessonId and query.
+ */
+export async function searchYouTubeForLesson(
+  lessonOrProfile: Lesson | LessonSearchProfile,
+  maxResults = 5
+): Promise<YouTubeSearchResult> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+
+  if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_YOUTUBE_API_KEY') {
+    return {
+      success: false,
+      apiKeyConfigured: false,
+      videos: [],
+      error: 'YOUTUBE_API_KEY is not configured in server environment (.env). Configure an API key from Google Cloud Console to enable live discovery.'
+    };
+  }
+
+  // Derive profile and lesson identifiers
+  const profile: LessonSearchProfile = 'primarySearchQuery' in lessonOrProfile
+    ? lessonOrProfile
+    : generateSearchProfile(lessonOrProfile, `Phase ${lessonOrProfile.phaseId}`);
+
+  const lessonId = profile.lessonId;
+  const lessonTitle = profile.lessonTitle;
+
+  // Build query sequence: primary search query, followed by secondary search queries
+  const queriesToTry = [
+    profile.primarySearchQuery,
+    ...(profile.secondarySearchQueries || [])
+  ].filter(Boolean);
+
+  let accumulatedVideos: ScoredVideo[] = [];
+  const seenVideoIds = new Set<string>();
+
+  for (const query of queriesToTry) {
+    // Check server cache first: cacheKey = youtube:${lessonId}:${query}
+    const cacheKey = `youtube:${lessonId}:${query}`;
+    let queryVideos: ScoredVideo[] = [];
+    let rawResultCount = 0;
+
+    if (youtubeResponseCache.has(cacheKey)) {
+      queryVideos = youtubeResponseCache.get(cacheKey)!;
+      rawResultCount = queryVideos.length;
+    } else {
+      const res = await executeYouTubeQuery(query, profile, apiKey, maxResults);
+      if (res.quotaExceeded) {
+        return {
+          success: false,
+          apiKeyConfigured: true,
+          videos: accumulatedVideos,
+          quotaExceeded: true,
+          error: res.error
+        };
+      }
+      if (res.error && accumulatedVideos.length === 0) {
+        return {
+          success: false,
+          apiKeyConfigured: true,
+          videos: [],
+          error: res.error
+        };
+      }
+
+      queryVideos = res.videos;
+      rawResultCount = res.rawCount;
+      youtubeResponseCache.set(cacheKey, queryVideos);
+    }
+
+    // Server-side logging for development & auditing
+    console.log('=== YOUTUBE DISCOVERY LOG ===');
+    console.log('LESSON:', lessonId);
+    console.log('TITLE:', lessonTitle);
+    console.log('QUERY:', query);
+    console.log('RESULTS:', rawResultCount);
+    if (queryVideos.length > 0) {
+      console.log('TOP CANDIDATE:', queryVideos[0].title);
+      console.log('VIDEO ID:', queryVideos[0].id);
+      console.log('SCORE:', queryVideos[0].relevanceScore);
+    } else {
+      console.log('TOP CANDIDATE: None (relevance below threshold or zero results)');
+    }
+    console.log('=============================');
+
+    // Accumulate unique candidates
+    for (const v of queryVideos) {
+      if (!seenVideoIds.has(v.id)) {
+        seenVideoIds.add(v.id);
+        accumulatedVideos.push(v);
+      }
+    }
+
+    // If we have at least 2 high-scoring candidates, avoid burning quota with secondary queries
+    if (accumulatedVideos.length >= 2) {
+      break;
+    }
+  }
+
+  // Sort accumulated videos by overall score descending
+  accumulatedVideos.sort((a, b) => (b.relevanceScore + b.qualityScore) - (a.relevanceScore + a.qualityScore));
+
+  return {
+    success: true,
+    apiKeyConfigured: true,
+    videos: accumulatedVideos.slice(0, maxResults)
+  };
 }
 
 /**
