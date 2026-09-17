@@ -318,9 +318,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                           </div>
                         </li>
                         <li>
-                          Under <strong className="text-white">Authorized redirect URIs</strong>, add:
-                          <div className="mt-1 p-1.5 bg-[#141417] text-white rounded select-all border border-[#242429]">
-                            https://thetrenchlab.vercel.app/__/auth/handler
+                          Under <strong className="text-white">Authorized redirect URIs</strong>, ensure <strong className="text-[#E8A33D]">BOTH</strong> URIs are added:
+                          <div className="mt-1.5 space-y-1">
+                            <div className="p-1.5 bg-[#141417] text-white rounded select-all border border-[#242429]">
+                              https://thetrenchlab.vercel.app/__/auth/handler
+                            </div>
+                            <div className="p-1.5 bg-[#141417] text-white rounded select-all border border-[#242429]">
+                              https://thetrenchlab.vercel.app
+                            </div>
                           </div>
                         </li>
                         <li>Click <strong className="text-white">Save</strong>. Changes apply in ~5 minutes!</li>

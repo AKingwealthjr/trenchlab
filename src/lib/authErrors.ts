@@ -38,16 +38,16 @@ export function getFriendlyAuthErrorMessage(error: unknown): string {
     return 'Popup window was blocked by browser. Please allow popups for authentication.';
   }
   if (errStr.includes('auth/unauthorized-domain')) {
-    return 'Domain unauthorized: Add your deployment domain (e.g. thetrenchlab.vercel.app) to Firebase Console > Authentication > Settings > Authorized domains.';
+    return 'Domain unauthorized in Firebase: Please ensure the domain is listed in Firebase Console > Authentication > Settings > Authorized domains.';
   }
   if (errStr.includes('auth/network-request-failed')) {
-    return 'Google Sign-In blocked by browser cross-origin storage or missing OAuth redirect URI. Please use Email & Password below to sign in immediately, or add your Vercel URL to the OAuth Client in Google Cloud Console.';
+    return 'Google authentication network request timed out or was interrupted. Please retry or use the direct Google redirect option.';
   }
   if (errStr.includes('auth/too-many-requests')) {
     return 'Too many consecutive attempts. Access temporarily throttled for security.';
   }
   if (errStr.includes('auth/operation-not-allowed')) {
-    return 'GitHub OAuth is not yet enabled in your Firebase project. Enable GitHub in Firebase Console > Authentication > Sign-in method, or use Google or Email.';
+    return 'OAuth provider is not enabled in your Firebase project. Please check Firebase Console > Authentication > Sign-in method.';
   }
   if (errStr.includes('auth/account-exists-with-different-credential')) {
     return 'An account already exists with the same email using a different sign-in method.';
@@ -56,5 +56,5 @@ export function getFriendlyAuthErrorMessage(error: unknown): string {
     return 'Unauthorized Firestore access. Security rules denied this operation.';
   }
 
-  return 'Authentication failed. Check your credentials and try again.';
+  return `Authentication notice: ${errStr}`;
 }
