@@ -17,10 +17,25 @@ import {
 import { getFirestore } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
 
+// Dynamically resolve authDomain so on custom deployment domains (e.g. thetrenchlab.vercel.app),
+// authentication is same-origin with the proxied /__/auth/handler, completely bypassing third-party storage blocking.
+const resolveAuthDomain = (): string => {
+  if (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) {
+    return import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'thetrenchlab.vercel.app' || host.endsWith('.thetrenchlab.vercel.app')) {
+      return host;
+    }
+  }
+  return appletConfig.authDomain || 'trenchlab-production.firebaseapp.com';
+};
+
 // Configuration with fallback to environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain,
+  authDomain: resolveAuthDomain(),
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId,
