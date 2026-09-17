@@ -41,7 +41,7 @@ export function getFriendlyAuthErrorMessage(error: unknown): string {
     return 'Domain unauthorized: Add your deployment domain (e.g. thetrenchlab.vercel.app) to Firebase Console > Authentication > Settings > Authorized domains.';
   }
   if (errStr.includes('auth/network-request-failed')) {
-    return 'Cross-origin storage blocked by browser: Chrome or Safari partitioned third-party cookies during popup. Please try clicking Google again (which will use direct redirect) or sign in with email.';
+    return 'Google Sign-In blocked by browser cross-origin storage or missing OAuth redirect URI. Please use Email & Password below to sign in immediately, or add your Vercel URL to the OAuth Client in Google Cloud Console.';
   }
   if (errStr.includes('auth/too-many-requests')) {
     return 'Too many consecutive attempts. Access temporarily throttled for security.';

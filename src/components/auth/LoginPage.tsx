@@ -44,6 +44,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [showGoogleHelp, setShowGoogleHelp] = useState(false);
   const [authenticatedSuccess, setAuthenticatedSuccess] = useState(false);
 
   // Clear messages when switching mode
@@ -284,9 +285,51 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
               {/* Error Notice */}
               {errorMsg && (
-                <div className="mb-5 p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 flex items-start space-x-2.5 text-xs text-rose-200 animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                  <div className="leading-relaxed">{errorMsg}</div>
+                <div className="mb-5 p-3.5 rounded-lg bg-rose-950/40 border border-rose-800/60 space-y-2 text-xs text-rose-200 animate-in fade-in">
+                  <div className="flex items-start space-x-2.5">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div className="leading-relaxed font-sans">{errorMsg}</div>
+                  </div>
+                  
+                  <div className="pt-1 flex flex-wrap items-center gap-2 border-t border-rose-900/50">
+                    <button
+                      type="button"
+                      onClick={() => setShowGoogleHelp(!showGoogleHelp)}
+                      className="text-[11px] font-mono text-[#E8A33D] hover:underline underline-offset-2 flex items-center space-x-1"
+                    >
+                      <span>{showGoogleHelp ? '▲ Hide setup instructions' : '▶ How to fix Google OAuth on Vercel'}</span>
+                    </button>
+                  </div>
+
+                  {showGoogleHelp && (
+                    <div className="p-3 bg-[#0A0A0B] rounded border border-[#242429] text-[11px] font-mono text-[#9A9AA3] space-y-2 text-left">
+                      <div className="text-white font-semibold">2-Minute Google Cloud Console Fix:</div>
+                      <ol className="list-decimal pl-4 space-y-1.5 leading-normal">
+                        <li>
+                          Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-[#E8A33D] underline">Google Cloud Console → Credentials</a> (Select project <code className="text-emerald-400">trenchlab-production</code>).
+                        </li>
+                        <li>
+                          Click the <strong className="text-white">Web client (auto created by Google Service)</strong> under OAuth 2.0 Client IDs.
+                        </li>
+                        <li>
+                          Under <strong className="text-white">Authorized JavaScript origins</strong>, click <strong className="text-white">+ ADD URI</strong> and paste:
+                          <div className="mt-1 p-1.5 bg-[#141417] text-white rounded select-all border border-[#242429]">
+                            https://thetrenchlab.vercel.app
+                          </div>
+                        </li>
+                        <li>
+                          Under <strong className="text-white">Authorized redirect URIs</strong>, add:
+                          <div className="mt-1 p-1.5 bg-[#141417] text-white rounded select-all border border-[#242429]">
+                            https://thetrenchlab.vercel.app/__/auth/handler
+                          </div>
+                        </li>
+                        <li>Click <strong className="text-white">Save</strong>. Changes apply in ~5 minutes!</li>
+                      </ol>
+                      <div className="text-emerald-400 text-[10px] pt-1">
+                        Tip: You can register or sign in with Email & Password right below without waiting for Google setup.
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
