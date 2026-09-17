@@ -1,11 +1,38 @@
 import { VideoResource } from '../types';
 
 export const VERIFIED_VIDEOS: Record<string, VideoResource> = {
+  whatIsCrypto: {
+    title: 'What is Cryptocurrency? (Animated Explanation for Beginners)',
+    creator: 'Whiteboard Crypto',
+    url: 'https://www.youtube.com/watch?v=rYQgy8QDEBI',
+    youtubeId: 'rYQgy8QDEBI',
+    duration: '06:38',
+    difficulty: 'BEGINNER',
+    whyUseful: 'Explains digital decentralized ledgers, cryptography, and personal custody without technical jargon.'
+  },
+  blockchainBasics: {
+    title: 'How Does a Blockchain Work - Simply Explained',
+    creator: 'Simply Explained',
+    url: 'https://www.youtube.com/watch?v=SSo_EIwHSd4',
+    youtubeId: 'SSo_EIwHSd4',
+    duration: '05:59',
+    difficulty: 'BEGINNER',
+    whyUseful: 'Clear visual breakdown of blocks, cryptographic hashes, distributed consensus, and transaction immutability.'
+  },
+  coinsVsTokens: {
+    title: 'The Difference Between Coins and Tokens (Explained)',
+    creator: 'Whiteboard Crypto',
+    url: 'https://www.youtube.com/watch?v=t0T8t2a65-Y',
+    youtubeId: 't0T8t2a65-Y',
+    duration: '08:32',
+    difficulty: 'BEGINNER',
+    whyUseful: 'Explains native Layer-1 coins vs smart contract tokens and why gas fees always require native SOL.'
+  },
   liquidityPools: {
     title: 'What is a Liquidity Pool in Crypto? (Animated)',
     creator: 'Whiteboard Crypto',
-    url: 'https://www.youtube.com/watch?v=g6B3g-L31_o',
-    youtubeId: 'g6B3g-L31_o',
+    url: 'https://www.youtube.com/watch?v=cCOhk_z17m4',
+    youtubeId: 'cCOhk_z17m4',
     duration: '11:42',
     difficulty: 'BEGINNER',
     whyUseful: 'Clear visual demonstration of constant product AMM mechanics, pool ratio pricing, and impermanent loss basics.'
@@ -15,7 +42,7 @@ export const VERIFIED_VIDEOS: Record<string, VideoResource> = {
     creator: 'Whiteboard Crypto',
     url: 'https://www.youtube.com/watch?v=g6B3g-L31_o',
     youtubeId: 'g6B3g-L31_o',
-    duration: '8:15',
+    duration: '08:15',
     difficulty: 'BEGINNER',
     whyUseful: 'Explains circulating vs total supply, why unit bias tricks beginners, and how market cap dictates liquidity requirements.'
   },
@@ -83,8 +110,8 @@ export const VERIFIED_VIDEOS: Record<string, VideoResource> = {
   positionSizing: {
     title: 'Risk Management & Position Sizing in Trading',
     creator: 'Rayner Teo',
-    url: 'https://www.youtube.com/watch?v=476m5_z7h8s',
-    youtubeId: '476m5_z7h8s',
+    url: 'https://www.youtube.com/watch?v=kIq8yXq0Tj4',
+    youtubeId: 'kIq8yXq0Tj4',
     duration: '21:03',
     difficulty: 'INTERMEDIATE',
     whyUseful: 'Mathematical formulas for calculating risk per trade, stop loss placement, and avoiding ruin in volatile assets.'

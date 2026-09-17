@@ -91,11 +91,10 @@ const INITIAL_PHASES: Phase[] = [
           'Learn why censorship-resistance enables permissionless 24/7 on-chain trading',
           'Recognize why the absence of central clearing houses requires complete personal accountability'
         ],
-        videos: [VERIFIED_VIDEOS.solanaEcosystem],
+        videos: [VERIFIED_VIDEOS.whatIsCrypto],
         keyConcepts: ['Decentralized Ledger', 'Permissionless Swaps', 'Self-Custodial Risk', 'Cryptographic Proof'],
         deepDive: [
           'Cryptocurrency represents cryptographic ownership recorded across a globally distributed network of independent validator nodes.',
-          'Unlike traditional stock brokerages that operate between 9:30 AM and 4:00 PM with settlement clearing periods (T+1), on-chain markets never sleep. Transactions settle in sub-second blocks on Solana.',
           'With this freedom comes absolute responsibility: there is no customer support desk to reverse an accidental transfer or undo a bad trade.'
         ],
         realWorldExample: 'When trading on a Solana DEX, your trade is validated by hundreds of validator nodes worldwide within 400 milliseconds, without any bank or custodian approving your order.',
@@ -129,11 +128,10 @@ const INITIAL_PHASES: Phase[] = [
           'Understand how Solana achieves high throughput via Proof of History (PoH) and Proof of Stake (PoS)',
           'Learn how state accounts and SPL token balances are updated in real time'
         ],
-        videos: [VERIFIED_VIDEOS.solanaEcosystem],
+        videos: [VERIFIED_VIDEOS.blockchainBasics],
         keyConcepts: ['Proof of History', 'Validator Nodes', 'Account State', 'Slot Time'],
         deepDive: [
           'A blockchain is an append-only digital ledger. Each block references the cryptographic hash of the prior block, ensuring historical transactions cannot be modified.',
-          'Solana introduces Proof of History (PoH)—a verifiable delay function clock that allows nodes to agree on the passage of time without having to communicate constantly before ordering transactions.',
           'This allows Solana to process 2,500+ transactions per second with an average confirmation time of 400 milliseconds, creating the fast-paced environment where memecoins trade.'
         ],
         realWorldExample: 'During a high-volatility token launch, thousands of buyers submit swaps simultaneously. Solana’s validator leader organizes and timestamps these swaps sequentially by slot.',
@@ -167,11 +165,10 @@ const INITIAL_PHASES: Phase[] = [
           'Understand Associated Token Accounts (ATA) and rent exemption on Solana',
           'Recognize why you always need native SOL in your wallet to trade any token'
         ],
-        videos: [VERIFIED_VIDEOS.solanaEcosystem],
+        videos: [VERIFIED_VIDEOS.coinsVsTokens],
         keyConcepts: ['Native Asset (SOL)', 'SPL Token Standard', 'Associated Token Account (ATA)', 'Rent Exemption'],
         deepDive: [
           'Native Coins: SOL is the native asset of the Solana blockchain. It pays for transaction gas, validator rewards, and storage rent.',
-          'SPL Tokens: Every memecoin (e.g. BONK, WIF, POPCAT) is an SPL token created via the Solana Program Library Token program.',
           'When you buy a new memecoin for the first time, your wallet creates a sub-account called an Associated Token Account (ATA), locking approximately 0.002 SOL as refundable rent.'
         ],
         realWorldExample: 'You have 50,000 WIF tokens in your wallet, but if your native SOL balance drops to 0.000, you cannot send or sell your WIF because you have no SOL to pay transaction fees.',
@@ -243,11 +240,10 @@ const INITIAL_PHASES: Phase[] = [
           'Identify predatory vesting schedules and hidden token unlocks',
           'Evaluate why memecoins prefer 100% circulating supply at launch'
         ],
-        videos: [VERIFIED_VIDEOS.marketCap],
+        videos: [],
         keyConcepts: ['Max Supply', 'Unlock Dilution', 'Vesting Schedules', 'Circulating Float'],
         deepDive: [
           'FDV = Current Token Price × Maximum Possible Supply.',
-          'In predatory "low-float, high-FDV" tokens (common in VC-backed projects), only 10% of tokens circulate at launch. When the remaining 90% unlock for insiders, massive continuous selling crashes the price.',
           'Pure memecoins on Solana generally feature 100% circulating supply at launch, meaning Market Cap = FDV. This removes future inflation risk, though creator holding concentration remains a separate threat.'
         ],
         realWorldExample: 'A project launches with a $5M Market Cap and a $100M FDV. Over the next 12 months, 20 million new tokens unlock monthly. Even if new buyers enter, the perpetual selling pressure prevents price appreciation.',
@@ -319,11 +315,10 @@ const INITIAL_PHASES: Phase[] = [
           'Understand the Volume-to-Market-Cap velocity ratio',
           'Spot the difference between sustained organic volume and artificial spikes'
         ],
-        videos: [VERIFIED_VIDEOS.dexscreenerMastery],
+        videos: [],
         keyConcepts: ['Trading Velocity', 'Volume Confirmation', 'Exhaustion Volume', 'Volume / MC Ratio'],
         deepDive: [
           'Volume measures the total dollar value of all swaps executed within a specific timeframe.',
-          'Volume is the fuel that validates price movements. A breakout above a resistance level that occurs on light volume is prone to failure; a breakout accompanied by a massive volume surge demonstrates genuine demand absorption.',
           'High Volume / MC Ratio: When a $200k MC token trades $1M in volume over 24 hours, the token is experiencing rapid turnover and high speculative interest.'
         ],
         realWorldExample: 'A memecoin breaks out to a new high, but the 5-minute volume bar is half the size of prior consolidation bars. Smart traders recognize buyer exhaustion and avoid buying the top of the move.',
@@ -357,11 +352,10 @@ const INITIAL_PHASES: Phase[] = [
           'Learn the trade-off between transaction certainty and execution price',
           'Configure slippage settings to minimize vulnerability to MEV sandwich bots'
         ],
-        videos: [VERIFIED_VIDEOS.phantomWallet],
+        videos: [],
         keyConcepts: ['Slippage Tolerance', 'Execution Deviation', 'MEV Sandwich Bots', 'Front-Running'],
         deepDive: [
           'Slippage is the difference between the price you see on your screen when clicking "Swap" and the actual price when your transaction is processed into a block by a validator.',
-          'Slippage Tolerance: Setting slippage to 1% tells the swap router to revert (cancel) the trade if the price moves against you by more than 1% before execution.',
           'MEV Sandwich Danger: If you set slippage excessively high (e.g. 15% - 25%), predatory MEV bots detect your pending transaction, buy immediately ahead of you, let your trade push price up to your maximum slippage limit, and sell immediately after you, pocketing the difference.'
         ],
         realWorldExample: 'A trader sets 20% slippage on Jupiter to buy a hyped token. An automated MEV bot detects the swap in the mempool, sandwiches the trade, and the user instantly receives 18% fewer tokens than market value.',
@@ -395,11 +389,10 @@ const INITIAL_PHASES: Phase[] = [
           'Calculate price impact based on your order size versus pool reserves',
           'Use split orders and DCA execution to trade illiquid pairs safely'
         ],
-        videos: [VERIFIED_VIDEOS.liquidityPools],
+        videos: [],
         keyConcepts: ['Price Impact', 'Constant Product Formula (x * y = k)', 'Order Splitting', 'Liquidity Depth'],
         deepDive: [
           'While slippage is caused by other market participants trading before you, Price Impact is caused by YOUR OWN order size relative to the liquidity pool.',
-          'In an AMM using x * y = k, every buy removes tokens from the pool and deposits SOL, moving the price up along the curve during your single transaction.',
           'If you buy $2,000 of a token with only $10,000 liquidity, your own order will push the price up 20%+ against yourself. You pay a massive premium on the latter half of your purchase.'
         ],
         realWorldExample: 'A trader with $5,000 tries to buy an early token with $15,000 liquidity in one single transaction. DexScreener shows a -28% price impact warning. The trader executes anyway and instantly starts with a -28% unrealized loss.',
@@ -433,11 +426,10 @@ const INITIAL_PHASES: Phase[] = [
           'Understand order-book matching engines versus Automated Market Makers',
           'Know when a memecoin migrates from DEX trading to Tier-1 CEX listing'
         ],
-        videos: [VERIFIED_VIDEOS.solanaEcosystem],
+        videos: [],
         keyConcepts: ['Custodial vs Non-Custodial', 'Order Book vs AMM', 'KYC & Access', 'Listing Life Cycle'],
         deepDive: [
           'CEX (Centralized Exchange, e.g. Binance, Coinbase): You deposit funds into the exchange’s custody. Trades are matched off-chain in a private matching database with an order book of limit orders.',
-          'DEX (Decentralized Exchange, e.g. Raydium, Orca, Jupiter): You retain self-custody in your Phantom wallet. Trades execute transparently via on-chain smart contracts and liquidity pools.',
           'Memecoin Lifecycle: 99.9% of memecoins begin exclusively on DEXs. Only the top 0.01% with massive sustained community volume ever achieve CEX listings.'
         ],
         realWorldExample: 'When WIF was under $10M Market Cap, it was only tradable on Solana DEXs like Raydium. Months later, as daily volume hit hundreds of millions, Binance and Bybit listed it on their centralized order books.',
@@ -661,7 +653,7 @@ const INITIAL_PHASES: Phase[] = [
           'Evaluate body size as proof of directional conviction',
           'Recognize absorption at key support and resistance boundaries'
         ],
-        videos: [VERIFIED_VIDEOS.candlesticks],
+        videos: [],
         keyConcepts: ['Wick Rejection', 'Buyer Absorption', 'Exhaustion Wicks', 'Body Dominance'],
         deepDive: [
           'The body of the candle shows where the market accepted price (the close). The wicks show where the market tested price and rejected it.',
@@ -698,7 +690,7 @@ const INITIAL_PHASES: Phase[] = [
           'Avoid the noise and emotional traps of looking exclusively at the 1-minute chart',
           'Align lower-timeframe entry triggers with higher-timeframe structural bias'
         ],
-        videos: [VERIFIED_VIDEOS.candlesticks],
+        videos: [],
         keyConcepts: ['Timeframe Hierarchy', 'Macro vs Micro Trend', 'Execution Filtering', 'Noise Elimination'],
         deepDive: [
           'Top-down analysis rule: Never take a trade on the 1m chart that directly opposes the structure of the 15m chart.',
@@ -773,7 +765,7 @@ const INITIAL_PHASES: Phase[] = [
           'Identify bearish market structure: Lower Highs (LH) and Lower Lows (LL)',
           'Spot the early warning signs of trend exhaustion'
         ],
-        videos: [VERIFIED_VIDEOS.candlesticks],
+        videos: [],
         keyConcepts: ['Higher Highs (HH)', 'Higher Lows (HL)', 'Lower Highs (LH)', 'Lower Lows (LL)', 'Trend Definition'],
         deepDive: [
           'An uptrend is defined simply as a continuous sequence of Higher Highs and Higher Lows.',
@@ -810,7 +802,7 @@ const INITIAL_PHASES: Phase[] = [
           'Identify Change of Character (CHoCH) as the earliest structural warning of trend shifts',
           'Avoid entering prematurely before structural candle close confirmation'
         ],
-        videos: [VERIFIED_VIDEOS.supportResistance],
+        videos: [],
         keyConcepts: ['Break of Structure (BOS)', 'Change of Character (CHoCH)', 'Swing Points', 'Structural Invalidation'],
         deepDive: [
           'BOS (Break of Structure): A continuation event where price breaks beyond a previous swing point in the direction of the dominant trend.',
@@ -847,7 +839,7 @@ const INITIAL_PHASES: Phase[] = [
           'Identify a valid "Reclaim" setup for high-probability, low-risk entries',
           'Define the exact stop loss placement below the sweep wick'
         ],
-        videos: [VERIFIED_VIDEOS.supportResistance],
+        videos: [],
         keyConcepts: ['Liquidity Sweep', 'False Breakdown', 'Reclaim Validation', 'Stop Hunting'],
         deepDive: [
           'Retail traders place their stop losses just below obvious horizontal support levels. Whales and market makers know this.',
@@ -885,7 +877,7 @@ const INITIAL_PHASES: Phase[] = [
           'Understand Volatility Contraction: why tight ranges precede violent expansions',
           'Avoid getting chopped up inside the middle of a consolidation range'
         ],
-        videos: [VERIFIED_VIDEOS.candlesticks],
+        videos: [],
         keyConcepts: ['Range Trading', 'Equilibrium (EQ)', 'Volatility Compression', 'Chop Zone Avoidance'],
         deepDive: [
           'Markets spend 70% of their time consolidating in ranges and only 30% trending.',
@@ -922,7 +914,7 @@ const INITIAL_PHASES: Phase[] = [
           'Detect the anatomy of a Bull Trap before you get trapped at the top',
           'Implement the Retest Entry strategy to eliminate false breakout risk'
         ],
-        videos: [VERIFIED_VIDEOS.supportResistance],
+        videos: [],
         keyConcepts: ['Breakout Validation', 'Retest Entry', 'Bull Trap Anatomy', 'Volume Confirmation'],
         deepDive: [
           'Criteria for a real breakout: (1) Full candle body closes outside the resistance zone, (2) Relative volume is at least 2x the 20-period moving average, (3) Pullback retests former resistance as support without falling back inside.',

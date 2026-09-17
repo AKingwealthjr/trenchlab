@@ -46,6 +46,20 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
   const prevLesson = currentIdx > 0 ? phase.lessons[currentIdx - 1] : null;
   const nextLesson = currentIdx < phase.lessons.length - 1 ? phase.lessons[currentIdx + 1] : null;
 
+  // Static verified video fallback strictly for this lesson if no dynamic resource loaded
+  const staticVideo = (lesson.videos && lesson.videos.length > 0 && lesson.videos[0].youtubeId) 
+    ? {
+        title: lesson.videos[0].title,
+        channelName: lesson.videos[0].creator,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${lesson.videos[0].youtubeId}`,
+        youtubeUrl: lesson.videos[0].url || `https://www.youtube.com/watch?v=${lesson.videos[0].youtubeId}`,
+        durationFormatted: lesson.videos[0].duration,
+        whyUseful: lesson.videos[0].whyUseful
+      }
+    : null;
+
+  const activeVideo = dynamicResource || staticVideo;
+
   // Fetch approved dynamic resource from server cache
   useEffect(() => {
     let mounted = true;
@@ -133,14 +147,14 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
             </div>
           </div>
 
-          {/* Video Player Section (Dynamic Curated Resource or Hardcoded Fallback) */}
-          {dynamicResource ? (
+          {/* Video Player Section (Dynamic Curated Resource or Verified Unique Lesson Masterclass) */}
+          {activeVideo ? (
             <div className="bg-[#0A0A0B] border border-emerald-500/30 rounded-xl overflow-hidden shadow-lg">
               <div className="aspect-video w-full bg-black relative">
                 <iframe
                   className="w-full h-full"
-                  src={`${dynamicResource.embedUrl}?rel=0&modestbranding=1`}
-                  title={dynamicResource.title}
+                  src={`${activeVideo.embedUrl}?rel=0&modestbranding=1`}
+                  title={activeVideo.title}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
@@ -155,12 +169,14 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
                       <span>VERIFIED MASTERCLASS</span>
                     </span>
                     <span className="text-[#8E8E98]">by</span>
-                    <span className="text-[#EDEDEF] font-bold">{dynamicResource.channelName}</span>
-                    <span className="text-[#E8A33D]">({dynamicResource.durationFormatted})</span>
+                    <span className="text-[#EDEDEF] font-bold">{activeVideo.channelName}</span>
+                    {activeVideo.durationFormatted && (
+                      <span className="text-[#E8A33D]">({activeVideo.durationFormatted})</span>
+                    )}
                   </div>
 
                   <a
-                    href={dynamicResource.youtubeUrl}
+                    href={activeVideo.youtubeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#E8A33D] hover:underline flex items-center space-x-1"
@@ -171,13 +187,13 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
                 </div>
 
                 <div className="text-sm font-semibold text-[#EDEDEF]">
-                  {dynamicResource.title}
+                  {activeVideo.title}
                 </div>
 
-                {dynamicResource.whyUseful && (
+                {activeVideo.whyUseful && (
                   <div className="text-xs text-[#9A9AA3] font-sans bg-[#0A0A0B] p-2.5 rounded-lg border border-[#242429]">
                     <span className="text-[#E8A33D] font-mono font-bold mr-1">CURATOR NOTES:</span>
-                    {dynamicResource.whyUseful}
+                    {activeVideo.whyUseful}
                   </div>
                 )}
               </div>
