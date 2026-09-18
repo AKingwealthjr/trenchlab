@@ -78,8 +78,17 @@ async function getStatus() {
   };
 }
 
+function getAction(req: any): string {
+  if (req.query?.action) {
+    return Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;
+  }
+  const urlPath = (req.url || '').split('?')[0];
+  const segments = urlPath.split('/').filter(Boolean);
+  return segments[segments.length - 1] || '';
+}
+
 export default async function handler(req: any, res: any) {
-  const action = Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;
+  const action = getAction(req);
   const admin = await requireAdmin(req, res);
   if (!admin) return;
   try {

@@ -9,8 +9,17 @@ export interface ApiPayload {
 export async function readApiJson(response: Response): Promise<ApiPayload> {
   const body = await response.text();
   const contentType = response.headers.get('content-type') || '';
-  if (!body.trim()) return { success: false, error: 'EMPTY_API_RESPONSE', message: 'The server returned an empty response.' };
-  if (!contentType.includes('application/json')) return { success: false, error: 'INVALID_API_RESPONSE', message: `The server returned ${contentType || 'a non-JSON response'}.` };
+  if (!body.trim()) {
+    return { success: false, error: 'EMPTY_API_RESPONSE', message: `The server returned an empty response (HTTP ${response.status}).` };
+  }
+  if (!contentType.includes('application/json')) {
+    const preview = body.slice(0, 200).replace(/\s+/g, ' ').trim();
+    return { 
+      success: false, 
+      error: 'INVALID_API_RESPONSE', 
+      message: `The server returned ${contentType || 'non-JSON'} (HTTP ${response.status}): ${preview || 'no body'}` 
+    };
+  }
   try {
     return JSON.parse(body) as ApiPayload;
   } catch {

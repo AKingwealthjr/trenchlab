@@ -1,4 +1,31 @@
 {
-  "licenses": [],
-  "audit": []
+  "licenses": [
+    {
+      "id": "lic-229131628d891029",
+      "keyHash": "f2efd11ce84461d4096d3ebb15cab53b26ab51f769b3d4a09e319905ee695ee4",
+      "keyPrefix": "TLB-BC38",
+      "status": "available",
+      "assignedUid": null,
+      "assignedEmail": "testuser@gmail.com",
+      "createdAt": "2026-09-18T18:01:15.799Z",
+      "updatedAt": "2026-09-18T18:01:15.799Z",
+      "activatedAt": null,
+      "expiresAt": null,
+      "maxActivations": 1,
+      "activationCount": 0,
+      "createdBy": "cli-admin",
+      "notes": "1\\"
+    }
+  ],
+  "audit": [
+    {
+      "id": "aud-65a857f02c231bc0",
+      "licenseId": "lic-229131628d891029",
+      "action": "generate",
+      "actorUid": "cli-admin",
+      "actorEmail": "admin@trenchlab",
+      "notes": "1\\",
+      "createdAt": "2026-09-18T18:01:15.799Z"
+    }
+  ]
 }

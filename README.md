@@ -36,6 +36,33 @@ TRENCHLAB is an existing Firebase-backed React/Vite university application for S
 - `src/components/admin/LicenseAdmin.tsx` adds `/admin/licenses` for key generation, listing, lifecycle actions, and audit review.
 - `src/App.tsx` enforces a university-wide entitlement guard. Admins bypass licensing; non-admin users need an active, non-expired license or are redirected to `/activate`.
 
+### CLI command for generating license keys
+
+You can generate license keys directly from your terminal and save them straight to production Firestore:
+
+```bash
+# Generate a key tied to an email:
+npm run generate-key user@example.com "VIP student"
+
+# Or generate a general key (any user can activate):
+npm run generate-key
+```
+
+Output:
+```
+==========================================
+   TRENCHLAB LICENSE KEY GENERATOR (CLI)  
+==========================================
+
+  STATUS:           SUCCESS
+  LICENSE ID:       lic-f6bbf8dba0429039
+  LICENSE KEY:      TLB-XXXX-XXXX-XXXX
+  ASSIGNED EMAIL:   user@example.com
+  FIRESTORE SAVED:  YES (trenchlab-production)
+```
+
+The user takes this key, goes to `/activate`, and enters it to immediately unlock their university dashboard!
+
 ### Admin accounts (no license required)
 
 Admins are granted immediate dashboard access without a license key. The admin list is stored in **three locations**; keep them in sync:

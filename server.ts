@@ -8,9 +8,56 @@ import { generateSearchProfile } from './src/lib/searchProfiles';
 import { CURRICULUM_DATA, getLessonById } from './src/data/curriculumData';
 import { LessonResource } from './src/types';
 import { extractYouTubeVideoId, validateYouTubeVideo } from './src/server/youtubeService';
-import { createPublicKey, verify } from 'node:crypto';
+import { createPublicKey, verify, createHash, randomBytes } from 'node:crypto';
+import { LicenseStore } from './src/server/licenseStore';
+import { firebaseAdmin } from './src/server/firebaseAdmin';
 
 dotenv.config();
+
+const hashKey = (key: string) => createHash('sha256').update(key.trim().toUpperCase()).digest('hex');
+const createRawLicenseKey = () => `TLB-${randomBytes(6).toString('hex').toUpperCase().match(/.{1,4}/g)!.join('-')}`;
+const nowIso = () => new Date().toISOString();
+
+function getFirestoreDb() {
+  try {
+    return firebaseAdmin().db;
+  } catch {
+    return null;
+  }
+}
+
+async function writeAuditRecord(db: any, input: {
+  licenseId: string;
+  action: string;
+  actorUid: string;
+  actorEmail?: string | null;
+  notes?: string;
+}) {
+  try {
+    await db.collection('license_audit').add({
+      ...input,
+      actorEmail: input.actorEmail || null,
+      notes: input.notes || '',
+      createdAt: nowIso()
+    });
+  } catch (err) {
+    console.warn('[LICENSE AUDIT] Failed to write to Firestore:', err);
+  }
+}
+
+async function requireUserToken(req: express.Request, res: express.Response): Promise<FirebaseTokenClaims | null> {
+  const authorization = req.header('authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    jsonError(res, 401, 'UNAUTHENTICATED', 'Sign in is required.');
+    return null;
+  }
+  const claims = await verifyFirebaseToken(authorization.slice(7));
+  if (!claims) {
+    jsonError(res, 401, 'UNAUTHENTICATED', 'Your session could not be verified.');
+    return null;
+  }
+  return claims;
+}
 
 type FirebaseTokenClaims = { uid: string; email?: string };
 let firebaseCertificates: Record<string, string> | null = null;
@@ -484,6 +531,206 @@ async function startServer() {
       res.type('application/json').json({ success: true, resource: saved });
     } catch (err: any) {
       console.error('Error adding manual resource:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ==========================================
+  // LICENSE MANAGEMENT API ROUTES
+  // ==========================================
+
+  // List licenses
+  app.get('/api/licenses/list', async (req, res) => {
+    try {
+      const admin = await requireAdmin(req, res);
+      if (!admin) return;
+      const db = getFirestoreDb();
+      if (db) {
+        try {
+          const [listSnap, auditSnap] = await Promise.all([
+            db.collection('licenses').orderBy('createdAt', 'desc').limit(100).get(),
+            db.collection('license_audit').orderBy('createdAt', 'desc').limit(100).get()
+          ]);
+          return res.json({
+            success: true,
+            licenses: listSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            audit: auditSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          });
+        } catch (dbErr) {
+          console.warn('[LICENSE LIST] Firestore read error, falling back to LicenseStore:', dbErr);
+        }
+      }
+      return res.json({
+        success: true,
+        licenses: LicenseStore.getAll(),
+        audit: LicenseStore.getAudit()
+      });
+    } catch (err: any) {
+      console.error('[LICENSE LIST] Error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Generate license
+  app.post('/api/licenses/generate', async (req, res) => {
+    try {
+      const admin = await requireAdmin(req, res);
+      if (!admin) return;
+      const { assignedEmail, expiresAt, notes } = req.body || {};
+      const rawKey = createRawLicenseKey();
+      const db = getFirestoreDb();
+
+      if (db) {
+        try {
+          const id = db.collection('licenses').doc().id;
+          const record = {
+            keyHash: hashKey(rawKey),
+            keyPrefix: rawKey.slice(0, 8),
+            status: 'available',
+            assignedUid: null,
+            assignedEmail: assignedEmail || null,
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
+            activatedAt: null,
+            expiresAt: expiresAt || null,
+            maxActivations: 1,
+            activationCount: 0,
+            createdBy: admin.uid,
+            notes: String(notes || '')
+          };
+          await db.collection('licenses').doc(id).set(record);
+          await writeAuditRecord(db, {
+            licenseId: id,
+            action: 'generate',
+            actorUid: admin.uid,
+            actorEmail: admin.email || null,
+            notes: String(notes || '')
+          });
+          LicenseStore.generate({ assignedEmail, expiresAt, notes, adminUid: admin.uid, adminEmail: admin.email });
+          return res.status(201).json({ success: true, license: { id, key: rawKey } });
+        } catch (dbErr) {
+          console.warn('[LICENSE GENERATE] Firestore error, falling back to LicenseStore:', dbErr);
+        }
+      }
+
+      const localResult = LicenseStore.generate({
+        assignedEmail,
+        expiresAt,
+        notes,
+        adminUid: admin.uid,
+        adminEmail: admin.email
+      });
+      return res.status(201).json({ success: true, license: localResult });
+    } catch (err: any) {
+      console.error('[LICENSE GENERATE] Error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Activate license
+  app.post('/api/licenses/activate', async (req, res) => {
+    try {
+      const user = await requireUserToken(req, res);
+      if (!user) return;
+      const key = String(req.body?.licenseKey || '').trim().toUpperCase();
+      if (!key) return jsonError(res, 400, 'LICENSE_REQUIRED', 'Enter your license key.');
+
+      const db = getFirestoreDb();
+      if (db) {
+        try {
+          const snapshot = await db.collection('licenses').where('keyHash', '==', hashKey(key)).limit(1).get();
+          if (snapshot.empty) {
+            const localRes = LicenseStore.activate({ licenseKey: key, userUid: user.uid, userEmail: user.email });
+            if (localRes.success) return res.json({ success: true, message: 'ACCESS_GRANTED' });
+            return jsonError(res, 422, 'INVALID_LICENSE', 'This license key could not be verified.');
+          }
+          const ref = snapshot.docs[0].ref;
+          await db.runTransaction(async tx => {
+            const license = (await tx.get(ref)).data()!;
+            if (license.status === 'active' && license.assignedUid !== user.uid) throw new Error('LICENSE_ALREADY_ACTIVATED');
+            if (['revoked', 'suspended', 'expired'].includes(license.status)) throw new Error(`LICENSE_${String(license.status).toUpperCase()}`);
+            if (license.expiresAt && new Date(license.expiresAt).getTime() <= Date.now()) throw new Error('LICENSE_EXPIRED');
+            tx.update(ref, {
+              status: 'active',
+              assignedUid: user.uid,
+              assignedEmail: user.email || null,
+              activatedAt: nowIso(),
+              updatedAt: nowIso(),
+              activationCount: (license.activationCount || 0) + (license.assignedUid ? 0 : 1)
+            });
+            tx.set(db.collection('users').doc(user.uid), {
+              accessStatus: 'active',
+              licenseId: ref.id,
+              licenseActivatedAt: nowIso(),
+              accessExpiresAt: license.expiresAt || null
+            }, { merge: true });
+          });
+          await writeAuditRecord(db, { licenseId: ref.id, action: 'activate', actorUid: user.uid, actorEmail: user.email || null });
+          return res.json({ success: true, message: 'ACCESS_GRANTED' });
+        } catch (dbErr: any) {
+          const knownCodes = ['LICENSE_ALREADY_ACTIVATED', 'LICENSE_REVOKED', 'LICENSE_SUSPENDED', 'LICENSE_EXPIRED'];
+          if (knownCodes.includes(dbErr.message)) {
+            return jsonError(res, 422, dbErr.message, dbErr.message.replaceAll('_', ' '));
+          }
+          console.warn('[LICENSE ACTIVATE] Firestore error, falling back to LicenseStore:', dbErr);
+        }
+      }
+
+      const fallbackResult = LicenseStore.activate({ licenseKey: key, userUid: user.uid, userEmail: user.email });
+      if (!fallbackResult.success) {
+        return jsonError(res, 422, fallbackResult.error || 'INVALID_LICENSE', fallbackResult.message || 'Activation failed.');
+      }
+      return res.json({ success: true, message: 'ACCESS_GRANTED' });
+    } catch (err: any) {
+      console.error('[LICENSE ACTIVATE] Error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Suspend, Revoke, Reactivate
+  app.post('/api/licenses/:action', async (req, res, next) => {
+    const action = req.params.action;
+    if (!['suspend', 'revoke', 'reactivate'].includes(action)) {
+      return next();
+    }
+    try {
+      const admin = await requireAdmin(req, res);
+      if (!admin) return;
+      const { licenseId, reason } = req.body || {};
+      if (!licenseId) return jsonError(res, 400, 'LICENSE_ID_REQUIRED', 'License id is required.');
+
+      const db = getFirestoreDb();
+      if (db) {
+        try {
+          const ref = db.collection('licenses').doc(String(licenseId));
+          const snap = await ref.get();
+          if (snap.exists) {
+            const license = snap.data()!;
+            const status = action === 'reactivate' ? (license.assignedUid ? 'active' : 'available') : action === 'revoke' ? 'revoked' : 'suspended';
+            await ref.update({ status, updatedAt: nowIso(), lifecycleReason: String(reason || '') });
+            if (license.assignedUid) {
+              await db.collection('users').doc(license.assignedUid).set({
+                accessStatus: status === 'active' ? 'active' : status,
+                licenseId: String(licenseId),
+                accessExpiresAt: status === 'active' ? license.expiresAt || null : null
+              }, { merge: true });
+            }
+            await writeAuditRecord(db, { licenseId: String(licenseId), action, actorUid: admin.uid, actorEmail: admin.email || null, notes: String(reason || '') });
+            LicenseStore.updateStatus(String(licenseId), action as any, admin.uid, admin.email, reason);
+            return res.json({ success: true, license: { id: licenseId, status } });
+          }
+        } catch (dbErr) {
+          console.warn('[LICENSE LIFECYCLE] Firestore error, falling back to LicenseStore:', dbErr);
+        }
+      }
+
+      const updateResult = LicenseStore.updateStatus(String(licenseId), action as any, admin.uid, admin.email, reason);
+      if (!updateResult.success) {
+        return jsonError(res, 404, updateResult.error || 'LICENSE_NOT_FOUND', updateResult.message || 'License not found.');
+      }
+      return res.json({ success: true, license: updateResult.license });
+    } catch (err: any) {
+      console.error('[LICENSE LIFECYCLE] Error:', err);
       res.status(500).json({ success: false, error: err.message });
     }
   });

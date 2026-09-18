@@ -1,11 +1,23 @@
 {
   "rewrites": [
     {
-      "source": "/__/auth/(.*)",
-      "destination": "https://trenchlab-production.firebaseapp.com/__/auth/$1"
+      "source": "/__/auth/:match*",
+      "destination": "https://trenchlab-production.firebaseapp.com/__/auth/:match*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/api/licenses/:action",
+      "destination": "/api/licenses/[action]?action=:action"
+    },
+    {
+      "source": "/api/discovery/:action",
+      "destination": "/api/discovery/[action]?action=:action"
+    },
+    {
+      "source": "/api/:match*",
+      "destination": "/api/:match*"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]

@@ -44,8 +44,17 @@ async function writeAudit(db: Firestore, input: {
   }
 }
 
+function getAction(req: any): string {
+  if (req.query?.action) {
+    return Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;
+  }
+  const urlPath = (req.url || '').split('?')[0];
+  const segments = urlPath.split('/').filter(Boolean);
+  return segments[segments.length - 1] || '';
+}
+
 export default async function handler(req: any, res: any) {
-  const action = Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;
+  const action = getAction(req);
   try {
     const body = readBody(req);
     if (body === null) {
@@ -201,7 +210,7 @@ export default async function handler(req: any, res: any) {
               }, { merge: true });
             }
             await writeAudit(db, { licenseId: id, action, actorUid: admin.uid, actorEmail: admin.email || null, notes: String(body.reason || '') });
-            LicenseStore.updateStatus(id, action, admin.uid, admin.email, body.reason);
+            LicenseStore.updateStatus(id, action as 'suspend' | 'revoke' | 'reactivate', admin.uid, admin.email, body.reason);
             return sendJson(res, 200, { success: true, license: { id, status } });
           }
         } catch (dbErr) {
@@ -210,7 +219,7 @@ export default async function handler(req: any, res: any) {
       }
 
       // Fallback: LicenseStore
-      const updateResult = LicenseStore.updateStatus(id, action, admin.uid, admin.email, body.reason);
+      const updateResult = LicenseStore.updateStatus(id, action as 'suspend' | 'revoke' | 'reactivate', admin.uid, admin.email, body.reason);
       if (!updateResult.success) {
         return sendJson(res, 404, { success: false, error: updateResult.error || 'LICENSE_NOT_FOUND', message: updateResult.message || 'License not found.' });
       }
