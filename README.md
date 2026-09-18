@@ -140,11 +140,12 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 
 | Bug | Root cause | Fix applied | Remaining work |
 |---|---|---|---|
-| **FUNCTION_INVOCATION_FAILED on all admin API calls** | `*firebase-adminsdk*.json` was in `.gitignore` — the service account file never made it to Vercel, so every call to `firebaseAdmin()` threw `FIREBASE_ADMIN_NOT_CONFIGURED` and crashed the function | Credentials are now **embedded directly** in `src/server/firebaseAdmin.ts` as a hardcoded fallback (step 4). Env vars still take priority for rotation. | ✅ Done — redeploy Vercel and test `/api/licenses/list` |
-| Content Studio shows "API key unconfigured" | `YOUTUBE_API_KEY` env var not read by Vercel function | `youtubeService.ts` reads `process.env.YOUTUBE_API_KEY` with hardcoded fallback | ✅ Done |
-| License keys not generating from dashboard | Same root cause as above — Firebase Admin crash | Fixed by embedded credentials | ✅ Done — test Generate Key button |
-| API routes returning HTML / 404 | Vercel rewrite `(.*)` intercepted `/api/` paths | `vercel.json` uses `/((?!api/).*)` negative lookahead so API routes are never proxied to `index.html` | ✅ Done |
-| Next phase/lesson unlocked without completing previous | `isPhaseUnlocked` was level-based only | Sequential lesson + assessment + phase gating added to `UniversityContext.tsx` | ✅ Done |
+| **Vercel deploy failure: conflicting paths (resources.js conflicts with resources.ts)** | Both `.js` and `.ts` files existed with the same base name in `api/` | TypeScript sources moved to `api-src/`, leaving only clean, pre-bundled `.js` files in `api/`. `scripts/build-api.mjs` compiles `api-src/` -> `api/`. | ✅ Done |
+| **FUNCTION_INVOCATION_FAILED on all admin API calls** | Node ESM (`"type": "module"`) threw `ERR_MODULE_NOT_FOUND` on relative extensionless imports in serverless functions, plus missing credentials on disk | All serverless API handlers are pre-bundled with `esbuild` into self-contained ESM with embedded Firebase Admin credentials. Zero runtime import errors. | ✅ Done |
+| **Content Studio shows "API key unconfigured"** | `YOUTUBE_API_KEY` env var not read by Vercel function | `youtubeService.ts` reads `process.env.YOUTUBE_API_KEY` with hardcoded fallback | ✅ Done |
+| **License keys not generating from dashboard** | Same root cause as above — Firebase Admin crash | Fixed by pre-bundled API endpoints and embedded credentials | ✅ Done |
+| **CLI key generator failing on Windows with PSSecurityException** | Windows PowerShell execution policy blocks `npm.ps1` | `generate-key.bat`, `generate-key.cmd`, and `scripts/generate-key.mjs` run via pure Node, completely bypassing PowerShell execution restrictions | ✅ Done |
+| **Next phase/lesson unlocked without completing previous** | `isPhaseUnlocked` was level-based only | Sequential lesson + assessment + phase gating added to `UniversityContext.tsx` | ✅ Done |
 
 ### 2. How to debug the YouTube API key ("unconfigured" banner)
 
