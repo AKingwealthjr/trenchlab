@@ -242,6 +242,12 @@ function initStoreIfNeeded() {
       const raw = fs.readFileSync(STORAGE_FILE_PATH, 'utf-8');
       const parsed: LessonResource[] = JSON.parse(raw);
       for (const res of parsed) {
+        if (res.status === 'APPROVED' && !res.validatedAt) {
+          res.status = 'NEEDS_REVIEW';
+          res.isPrimary = false;
+          res.validationStatus = 'needs_review';
+          res.validationReason = 'Legacy resource requires YouTube revalidation.';
+        }
         resourcesCache.set(res.id, res);
       }
     } catch (e) {
@@ -249,8 +255,9 @@ function initStoreIfNeeded() {
     }
   }
 
-  // If empty, seed with initial verified resources
-  if (resourcesCache.size === 0) {
+  // Historical samples are never enabled by default. Production resources must
+  // be discovered and validated against YouTube before they can be approved.
+  if (resourcesCache.size === 0 && process.env.ALLOW_LEGACY_RESOURCE_SEED === 'true') {
     for (const seed of INITIAL_SEEDED_RESOURCES) {
       const id = `res-${seed.lessonId}-${seed.providerVideoId}`;
       const now = new Date().toISOString();
@@ -407,7 +414,7 @@ export const ResourceStore = {
     for (const lessonId of allLessonIds) {
       const items = Array.from(resourcesCache.values()).filter(r => r.lessonId === lessonId);
       const approved = items.filter(r => r.status === 'APPROVED');
-      const discovered = items.filter(r => r.status === 'DISCOVERED' || r.status === 'REVIEWED');
+      const discovered = items.filter(r => ['DISCOVERED', 'VALIDATED', 'REVIEWED', 'NEEDS_REVIEW', 'UNAVAILABLE'].includes(r.status));
 
       approvedResourcesCount += approved.length;
       needsReviewCount += discovered.length;

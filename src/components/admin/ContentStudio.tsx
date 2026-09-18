@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { CURRICULUM_DATA, TOTAL_CURRICULUM_LESSONS } from '../../data/curriculumData';
 import { LessonResource, ResourceStatus, LessonResourceSummaryStatus } from '../../types';
+import { readApiJson } from '../../lib/api';
+import { useUniversity } from '../../context/UniversityContext';
 
 interface DiscoveryStatusResponse {
   success: boolean;
@@ -40,6 +42,7 @@ interface DiscoveryStatusResponse {
 }
 
 export const ContentStudio: React.FC = () => {
+  const { firebaseUser } = useUniversity();
   const [statusData, setStatusData] = useState<DiscoveryStatusResponse | null>(null);
   const [resources, setResources] = useState<LessonResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,27 +65,29 @@ export const ContentStudio: React.FC = () => {
   const [manualChannel, setManualChannel] = useState('');
   const [manualWhyUseful, setManualWhyUseful] = useState('');
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualVideo, setManualVideo] = useState<Partial<LessonResource> | null>(null);
+  const [manualValidating, setManualValidating] = useState(false);
 
   // Batch Config
   const [batchSize, setBatchSize] = useState<number>(3);
+
+  const adminFetch = async (url: string, init: RequestInit = {}) => {
+    const token = await firebaseUser?.getIdToken();
+    return fetch(url, { ...init, headers: { ...init.headers, 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  };
 
   // Fetch initial data
   const fetchData = async () => {
     try {
       setLoading(true);
       const [statusRes, resRes] = await Promise.all([
-        fetch('/api/discovery/status'),
-        fetch('/api/discovery/resources')
+        adminFetch('/api/discovery/status'),
+        adminFetch('/api/discovery/resources')
       ]);
-
-      if (statusRes.ok) {
-        const sData = await statusRes.json();
-        setStatusData(sData);
-      }
-      if (resRes.ok) {
-        const rData = await resRes.json();
-        setResources(rData.resources || []);
-      }
+      const [sData, rData] = await Promise.all([readApiJson(statusRes), readApiJson(resRes)]);
+      if (statusRes.ok && sData.success) setStatusData(sData as unknown as DiscoveryStatusResponse);
+      else showNotice(String(sData.message || sData.error || 'Unable to load Content Studio.'), 'error');
+      if (resRes.ok && rData.success) setResources((rData.resources as LessonResource[]) || []);
     } catch (err) {
       console.error('Failed to load Content Studio status:', err);
     } finally {
@@ -92,7 +97,7 @@ export const ContentStudio: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [firebaseUser]);
 
   const showNotice = (message: string, type: 'success' | 'error' = 'success') => {
     setActionNotice({ message, type });
@@ -143,15 +148,14 @@ export const ContentStudio: React.FC = () => {
   const handleDiscoverSingle = async (lessonId: string) => {
     try {
       setDiscoveringLessonId(lessonId);
-      const res = await fetch('/api/discovery/discover-single', {
+      const res = await adminFetch('/api/discovery/discover-single', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lessonId, maxResults: 4 })
       });
 
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (!res.ok || !data.success) {
-        showNotice(data.error || 'Discovery failed', 'error');
+        showNotice(String(data.message || data.error || 'Discovery failed'), 'error');
       } else {
         showNotice(`Discovered ${data.videosFound} candidate videos for ${lessonId}`);
         await fetchData();
@@ -169,9 +173,8 @@ export const ContentStudio: React.FC = () => {
       setBatchDiscovering(true);
       setBatchProgress(targetPhaseId ? `Discovering Phase ${targetPhaseId}...` : `Discovering batch of ${batchSize} lessons...`);
 
-      const res = await fetch('/api/discovery/discover-batch', {
+      const res = await adminFetch('/api/discovery/discover-batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           batchSize,
           phaseId: targetPhaseId,
@@ -179,9 +182,9 @@ export const ContentStudio: React.FC = () => {
         })
       });
 
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (!res.ok || !data.success) {
-        showNotice(data.error || 'Batch discovery halted', 'error');
+        showNotice(String(data.message || data.error || 'Batch discovery halted'), 'error');
       } else {
         showNotice(`Batch processed ${data.processedCount} lessons successfully!`);
         await fetchData();
@@ -197,15 +200,15 @@ export const ContentStudio: React.FC = () => {
   // Approve Resource
   const handleApprove = async (resourceId: string, isPrimary = true) => {
     try {
-      const res = await fetch('/api/discovery/approve', {
+      const res = await adminFetch('/api/discovery/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resourceId, isPrimary })
       });
-      if (res.ok) {
+      const data = await readApiJson(res);
+      if (res.ok && data.success) {
         showNotice(`Resource approved as ${isPrimary ? 'PRIMARY' : 'SECONDARY'}`);
         await fetchData();
-      }
+      } else showNotice(String(data.message || data.error || 'Resource approval failed.'), 'error');
     } catch (err: any) {
       showNotice(err.message, 'error');
     }
@@ -214,42 +217,57 @@ export const ContentStudio: React.FC = () => {
   // Reject Resource
   const handleReject = async (resourceId: string) => {
     try {
-      const res = await fetch('/api/discovery/reject', {
+      const res = await adminFetch('/api/discovery/reject', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resourceId })
       });
-      if (res.ok) {
+      const data = await readApiJson(res);
+      if (res.ok && data.success) {
         showNotice('Resource rejected and removed from rotation');
         await fetchData();
-      }
+      } else showNotice(String(data.message || data.error || 'Resource rejection failed.'), 'error');
     } catch (err: any) {
       showNotice(err.message, 'error');
     }
   };
 
   // Manual Resource Submission
+  const handleManualValidate = async () => {
+    if (!manualUrl.trim()) return showNotice('Enter a YouTube URL or video ID first.', 'error');
+    try {
+      setManualValidating(true);
+      const response = await adminFetch('/api/discovery/manual-validate', {
+        method: 'POST', body: JSON.stringify({ youtubeUrl: manualUrl })
+      });
+      const data = await readApiJson(response);
+      if (!response.ok || !data.success) return showNotice(String(data.message || data.error || 'Video validation failed.'), 'error');
+      setManualVideo(data.video as Partial<LessonResource>);
+      showNotice('VIDEO VALIDATED');
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : 'Network error while validating the video.', 'error');
+    } finally {
+      setManualValidating(false);
+    }
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualUrl || !manualTitle) return;
+    if (!manualUrl || !manualVideo) return showNotice('Validate the video before injecting it.', 'error');
 
     try {
       setManualSubmitting(true);
-      const res = await fetch('/api/discovery/manual-add', {
+      const res = await adminFetch('/api/discovery/manual-add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lessonId: manualLessonId,
           youtubeUrl: manualUrl,
-          title: manualTitle,
-          channelName: manualChannel,
           whyUseful: manualWhyUseful
         })
       });
 
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (!res.ok || !data.success) {
-        showNotice(data.error || 'Failed to manually add video', 'error');
+        showNotice(String(data.message || data.error || 'Failed to manually add video'), 'error');
       } else {
         showNotice(`Manually verified video added to ${manualLessonId}`);
         setShowManualModal(false);
@@ -257,6 +275,7 @@ export const ContentStudio: React.FC = () => {
         setManualTitle('');
         setManualChannel('');
         setManualWhyUseful('');
+        setManualVideo(null);
         await fetchData();
       }
     } catch (err: any) {
@@ -755,37 +774,26 @@ export const ContentStudio: React.FC = () => {
               <div>
                 <label className="block text-[#8E8E98] mb-1">YOUTUBE VIDEO URL</label>
                 <input
-                  type="url"
+                  type="text"
                   required
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder="https://www.youtube.com/watch?v=... or VIDEO_ID"
                   value={manualUrl}
-                  onChange={(e) => setManualUrl(e.target.value)}
+                  onChange={(e) => { setManualUrl(e.target.value); setManualVideo(null); }}
                   className="w-full bg-[#0A0A0B] border border-[#242429] rounded-lg px-3 py-2 text-[#EDEDEF] focus:outline-none focus:border-[#E8A33D]"
                 />
               </div>
 
-              <div>
-                <label className="block text-[#8E8E98] mb-1">VIDEO TITLE</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Master Solscan in 10 Minutes"
-                  value={manualTitle}
-                  onChange={(e) => setManualTitle(e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-[#242429] rounded-lg px-3 py-2 text-[#EDEDEF] focus:outline-none focus:border-[#E8A33D]"
-                />
-              </div>
+              <button type="button" onClick={handleManualValidate} disabled={manualValidating} className="w-full px-4 py-2 rounded-lg bg-[#1C1C22] border border-[#3A3A42] hover:border-[#E8A33D] text-[#EDEDEF] font-bold disabled:opacity-50">
+                {manualValidating ? 'VALIDATING VIDEO...' : manualVideo ? 'VIDEO VALIDATED' : 'VALIDATE VIDEO'}
+              </button>
 
-              <div>
-                <label className="block text-[#8E8E98] mb-1">CHANNEL NAME</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Whiteboard Crypto"
-                  value={manualChannel}
-                  onChange={(e) => setManualChannel(e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-[#242429] rounded-lg px-3 py-2 text-[#EDEDEF] focus:outline-none focus:border-[#E8A33D]"
-                />
-              </div>
+              {manualVideo && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-[#EDEDEF] space-y-1">
+                  <div className="text-emerald-400 font-bold">VALIDATED • {manualVideo.durationFormatted}</div>
+                  <div>{manualVideo.title}</div>
+                  <div className="text-[#9A9AA3]">{manualVideo.channelName}</div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[#8E8E98] mb-1">WHY USEFUL / TAKEAWAYS</label>
@@ -808,10 +816,10 @@ export const ContentStudio: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={manualSubmitting}
-                  className="px-4 py-2 rounded-lg bg-[#E8A33D] hover:bg-[#F2B04E] text-black font-bold cursor-pointer"
+                  disabled={manualSubmitting || !manualVideo}
+                  className="px-4 py-2 rounded-lg bg-[#E8A33D] hover:bg-[#F2B04E] text-black font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {manualSubmitting ? 'SAVING...' : 'INJECT & APPROVE'}
+                  {manualSubmitting ? 'INJECTING...' : 'INJECT INTO LESSON'}
                 </button>
               </div>
             </form>

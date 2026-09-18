@@ -223,7 +223,11 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             email: userDoc.email || fbUser.email || '',
             avatarUrl: userDoc.photoURL || fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
             joinedDate: userDoc.createdAt ? userDoc.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
-            isGuest: false
+            isGuest: false,
+            accessStatus: userDoc.accessStatus || 'inactive',
+            licenseId: userDoc.licenseId || null,
+            licenseActivatedAt: userDoc.licenseActivatedAt || null,
+            accessExpiresAt: userDoc.accessExpiresAt || null
           });
 
           if (isNew) {

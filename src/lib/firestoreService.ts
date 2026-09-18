@@ -71,6 +71,10 @@ export interface FirestoreUserDocument {
   lessonsCompleted: number;
   quizzesPassed: number;
   challengesCompleted: number;
+  accessStatus?: 'active' | 'inactive' | 'suspended' | 'revoked' | 'expired';
+  licenseId?: string | null;
+  licenseActivatedAt?: string | null;
+  accessExpiresAt?: string | null;
 }
 
 /**

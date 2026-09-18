@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Lesson, Phase, LessonResource } from '../../types';
 import { useUniversity } from '../../context/UniversityContext';
+import { readApiJson } from '../../lib/api';
 
 interface LessonViewerModalProps {
   lesson: Lesson;
@@ -46,28 +47,18 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
   const prevLesson = currentIdx > 0 ? phase.lessons[currentIdx - 1] : null;
   const nextLesson = currentIdx < phase.lessons.length - 1 ? phase.lessons[currentIdx + 1] : null;
 
-  // Static verified video fallback strictly for this lesson if no dynamic resource loaded
-  const staticVideo = (lesson.videos && lesson.videos.length > 0 && lesson.videos[0].youtubeId) 
-    ? {
-        title: lesson.videos[0].title,
-        channelName: lesson.videos[0].creator,
-        embedUrl: `https://www.youtube-nocookie.com/embed/${lesson.videos[0].youtubeId}`,
-        youtubeUrl: lesson.videos[0].url || `https://www.youtube.com/watch?v=${lesson.videos[0].youtubeId}`,
-        durationFormatted: lesson.videos[0].duration,
-        whyUseful: lesson.videos[0].whyUseful
-      }
-    : null;
-
-  const activeVideo = dynamicResource || staticVideo;
+  // Only a resource validated by the server may be presented as verified.
+  const activeVideo = dynamicResource;
 
   // Fetch approved dynamic resource from server cache
   useEffect(() => {
     let mounted = true;
-    fetch(`/api/discovery/resources?lessonId=${lesson.id}&status=APPROVED`)
-      .then(r => r.json())
+    fetch(`/api/resources?lessonId=${lesson.id}`)
+      .then(readApiJson)
       .then(data => {
-        if (mounted && data.resources && data.resources.length > 0) {
-          const primary = data.resources.find((r: LessonResource) => r.isPrimary) || data.resources[0];
+        const resources = data.resources as LessonResource[] | undefined;
+        if (mounted && data.success && resources && resources.length > 0) {
+          const primary = resources.find((r: LessonResource) => r.isPrimary) || resources[0];
           setDynamicResource(primary);
         } else {
           setDynamicResource(null);

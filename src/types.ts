@@ -14,9 +14,12 @@ export type ResourceType = 'EXTERNAL_YOUTUBE' | 'TRENCHLAB_ORIGINAL';
 
 export type ResourceStatus = 
   | 'DISCOVERED'
+  | 'VALIDATED'
   | 'REVIEWED'
   | 'APPROVED'
   | 'REJECTED'
+  | 'UNAVAILABLE'
+  | 'NEEDS_REVIEW'
   | 'ARCHIVED';
 
 export type LessonResourceSummaryStatus = 'RESOURCE_READY' | 'NEEDS_REVIEW' | 'NEEDS_RESOURCE';
@@ -42,6 +45,9 @@ export interface LessonResource {
   isPrimary: boolean;
   searchQuery: string;
   whyUseful?: string;
+  validationStatus?: 'candidate' | 'validated' | 'approved' | 'rejected' | 'unavailable' | 'needs_review';
+  validatedAt?: string;
+  validationReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -188,6 +194,10 @@ export interface UserProfile {
   avatarUrl: string;
   joinedDate: string;
   isGuest?: boolean;
+  accessStatus?: 'active' | 'inactive' | 'suspended' | 'revoked' | 'expired';
+  licenseId?: string | null;
+  licenseActivatedAt?: string | null;
+  accessExpiresAt?: string | null;
 }
 
 export interface UserProgress {

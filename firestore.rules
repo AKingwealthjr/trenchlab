@@ -17,6 +17,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == 'alexkingsley@gmail.com' ||
         request.auth.token.email == 'precilexis@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
@@ -34,7 +35,13 @@ service cloud.firestore {
 
     // User profile document and personal progress subcollections
     match /users/{userId} {
-      allow read, write: if isOwner(userId) && isValidId(userId);
+      allow read: if isOwner(userId) && isValidId(userId);
+      // Users may maintain their profile/progress summary but cannot self-grant
+      // access by writing license or entitlement fields.
+      allow create: if isOwner(userId) && isValidId(userId) &&
+        request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'level', 'levelName', 'xp', 'streak', 'lessonsCompleted', 'quizzesPassed', 'challengesCompleted']);
+      allow update: if isOwner(userId) && isValidId(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'level', 'levelName', 'xp', 'streak', 'lessonsCompleted', 'quizzesPassed', 'challengesCompleted']);
 
       // Lesson completion & assignment records
       match /progress/{lessonId} {

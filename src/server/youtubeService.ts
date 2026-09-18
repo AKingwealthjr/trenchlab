@@ -10,6 +10,65 @@ export interface YouTubeSearchResult {
   quotaExceeded?: boolean;
 }
 
+export interface YouTubeValidationResult {
+  success: boolean;
+  apiKeyConfigured: boolean;
+  error?: string;
+  video?: ScoredVideo;
+}
+
+export function extractYouTubeVideoId(value: string): string | null {
+  const input = value.trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
+  try {
+    const url = new URL(input);
+    const id = url.hostname.includes('youtu.be')
+      ? url.pathname.split('/').filter(Boolean)[0]
+      : url.searchParams.get('v') || (url.pathname.match(/\/(?:embed|shorts)\/([A-Za-z0-9_-]{11})/) || [])[1];
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  } catch {
+    const match = input.match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:[?&/]|$)/);
+    return match?.[1] || null;
+  }
+}
+
+/** Search is only a candidate source. This calls videos.list before any approval. */
+export async function validateYouTubeVideo(videoId: string, profile?: LessonSearchProfile): Promise<YouTubeValidationResult> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey?.trim()) return { success: false, apiKeyConfigured: false, error: 'YOUTUBE_API_NOT_CONFIGURED' };
+  try {
+    const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+    url.searchParams.set('part', 'snippet,contentDetails,status');
+    url.searchParams.set('id', videoId);
+    url.searchParams.set('key', apiKey);
+    const response = await fetch(url);
+    if (!response.ok) {
+      const body = await response.text();
+      const quota = response.status === 403 && /quota|rateLimitExceeded/i.test(body);
+      return { success: false, apiKeyConfigured: true, error: quota ? 'YOUTUBE_API_QUOTA_REACHED' : `YOUTUBE_API_ERROR_${response.status}` };
+    }
+    const item = ((await response.json()) as { items?: any[] }).items?.[0];
+    if (!item) return { success: false, apiKeyConfigured: true, error: 'VIDEO_NOT_FOUND' };
+    if (item.status?.privacyStatus !== 'public') return { success: false, apiKeyConfigured: true, error: 'VIDEO_UNAVAILABLE' };
+    if (item.status?.embeddable !== true) return { success: false, apiKeyConfigured: true, error: 'VIDEO_NOT_EMBEDDABLE' };
+    const duration = parseYouTubeDuration(item.contentDetails?.duration);
+    const candidate: CandidateVideo = {
+      id: item.id,
+      title: item.snippet?.title || '', description: item.snippet?.description || '', channelTitle: item.snippet?.channelTitle || '',
+      publishedAt: item.snippet?.publishedAt || '', thumbnailUrl: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`,
+      embeddable: true, durationSeconds: duration.seconds, durationFormatted: duration.formatted
+    };
+    const fallbackProfile: LessonSearchProfile = { lessonId: 'manual', lessonTitle: candidate.title, lessonDescription: '', phaseId: 0, phaseTitle: '', topic: candidate.title, difficulty: 'BEGINNER', learningObjective: '', primarySearchQuery: '', secondarySearchQueries: [], negativeKeywords: [], preferredVideoLength: 'MEDIUM', preferredContentType: 'educational' };
+    const video = scoreVideoCandidate(candidate, profile || fallbackProfile);
+    return video.isEligible
+      ? { success: true, apiKeyConfigured: true, video }
+      : { success: false, apiKeyConfigured: true, error: 'VIDEO_REJECTED' };
+  } catch (error) {
+    console.error('[YOUTUBE] validation failed', { videoId, error: error instanceof Error ? error.message : String(error) });
+    return { success: false, apiKeyConfigured: true, error: 'YOUTUBE_NETWORK_ERROR' };
+  }
+}
+
 // In-memory cache for YouTube responses: cacheKey = youtube:${lessonId}:${query}
 const youtubeResponseCache = new Map<string, ScoredVideo[]>();
 

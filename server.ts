@@ -7,8 +7,69 @@ import { searchYouTubeForLesson } from './src/server/youtubeService';
 import { generateSearchProfile } from './src/lib/searchProfiles';
 import { CURRICULUM_DATA, getLessonById } from './src/data/curriculumData';
 import { LessonResource } from './src/types';
+import { extractYouTubeVideoId, validateYouTubeVideo } from './src/server/youtubeService';
+import { createPublicKey, verify } from 'node:crypto';
 
 dotenv.config();
+
+type FirebaseTokenClaims = { uid: string; email?: string };
+let firebaseCertificates: Record<string, string> | null = null;
+let certificatesExpireAt = 0;
+
+function jsonError(res: express.Response, status: number, error: string, message: string) {
+  return res.status(status).type('application/json').json({ success: false, error, message });
+}
+
+function getAdminEmails() {
+  return new Set((process.env.ADMIN_EMAILS || 'alexkingsley@gmail.com,precilexis@gmail.com').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
+}
+
+async function verifyFirebaseToken(token: string): Promise<FirebaseTokenClaims | null> {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const decode = (value: string) => JSON.parse(Buffer.from(value.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    const header = decode(parts[0]) as { kid?: string; alg?: string };
+    const claims = decode(parts[1]) as { aud?: string; iss?: string; exp?: number; sub?: string; email?: string };
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    if (!projectId || header.alg !== 'RS256' || !header.kid || !claims.sub || claims.aud !== projectId || claims.iss !== `https://securetoken.google.com/${projectId}` || !claims.exp || claims.exp <= Date.now() / 1000) return null;
+    if (!firebaseCertificates || Date.now() >= certificatesExpireAt) {
+      const response = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+      if (!response.ok) return null;
+      firebaseCertificates = await response.json() as Record<string, string>;
+      const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 3600);
+      certificatesExpireAt = Date.now() + maxAge * 1000;
+    }
+    const certificate = firebaseCertificates[header.kid];
+    if (!certificate) return null;
+    const signature = Buffer.from(parts[2].replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+    const valid = verify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), createPublicKey(certificate), signature);
+    return valid ? { uid: claims.sub, email: claims.email } : null;
+  } catch (error) {
+    console.warn('[ADMIN] token verification failed', error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
+async function requireAdmin(req: express.Request, res: express.Response): Promise<FirebaseTokenClaims | null> {
+  const authorization = req.header('authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    jsonError(res, 401, 'UNAUTHENTICATED', 'Sign in is required.');
+    return null;
+  }
+  const claims = await verifyFirebaseToken(authorization.slice(7));
+  if (!claims) {
+    jsonError(res, 401, 'UNAUTHENTICATED', 'Your session could not be verified.');
+    return null;
+  }
+  if (!claims.email || !getAdminEmails().has(claims.email.toLowerCase())) {
+    console.warn('[ADMIN] authorization denied', { uid: claims.uid });
+    jsonError(res, 403, 'FORBIDDEN', 'Administrator access required.');
+    return null;
+  }
+  console.info('[ADMIN] authorization success', { uid: claims.uid });
+  return claims;
+}
 
 async function startServer() {
   const app = express();
@@ -16,6 +77,12 @@ async function startServer() {
 
   // Middleware
   app.use(express.json());
+  app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (error instanceof SyntaxError && 'body' in error) {
+      return jsonError(res, 400, 'INVALID_JSON', 'Request body must be valid JSON.');
+    }
+    next(error);
+  });
 
   // ==========================================
   // DISCOVERY & CONTENT STUDIO API ROUTES FIRST
@@ -31,8 +98,9 @@ async function startServer() {
   });
 
   // 2. Discovery Status and Summary of 148 Lessons
-  app.get('/api/discovery/status', (req, res) => {
+  app.get('/api/discovery/status', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const apiKey = process.env.YOUTUBE_API_KEY;
       const isKeyConfigured = Boolean(apiKey && apiKey.trim() !== '' && apiKey !== 'MY_YOUTUBE_API_KEY');
 
@@ -58,8 +126,9 @@ async function startServer() {
   });
 
   // 3. List all stored resources
-  app.get('/api/discovery/resources', (req, res) => {
+  app.get('/api/discovery/resources', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const { lessonId, status } = req.query;
       let resources = ResourceStore.getAll();
 
@@ -81,9 +150,17 @@ async function startServer() {
     }
   });
 
+  // Student lesson playback reads only resources that have already passed approval.
+  app.get('/api/resources', (_req, res) => {
+    const { lessonId } = _req.query;
+    const resources = ResourceStore.getAll().filter(resource => resource.status === 'APPROVED' && (!lessonId || resource.lessonId === lessonId));
+    res.type('application/json').json({ success: true, resources });
+  });
+
   // 4. Discover candidates for a single lesson
   app.post('/api/discovery/discover-single', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const { lessonId, maxResults = 5 } = req.body;
       if (!lessonId) {
         return res.status(400).json({ success: false, error: 'lessonId is required' });
@@ -158,6 +235,7 @@ async function startServer() {
   // 5. Run batch discovery across multiple lessons (rate-limited to conserve quota)
   app.post('/api/discovery/discover-batch', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const { lessonIds, phaseId, batchSize = 3, delayMs = 600 } = req.body;
       const apiKey = process.env.YOUTUBE_API_KEY;
 
@@ -259,13 +337,35 @@ async function startServer() {
   });
 
   // 6. Approve candidate
-  app.post('/api/discovery/approve', (req, res) => {
+  app.post('/api/discovery/approve', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const { resourceId, isPrimary = true } = req.body;
       if (!resourceId) {
         return res.status(400).json({ success: false, error: 'resourceId is required' });
       }
 
+      const candidate = ResourceStore.getById(resourceId);
+      if (!candidate) return jsonError(res, 404, 'RESOURCE_NOT_FOUND', 'Resource not found.');
+      const validation = await validateYouTubeVideo(candidate.providerVideoId);
+      if (!validation.success || !validation.video) {
+        candidate.status = validation.error === 'VIDEO_NOT_FOUND' || validation.error === 'VIDEO_UNAVAILABLE' ? 'UNAVAILABLE' : 'NEEDS_REVIEW';
+        candidate.validationStatus = candidate.status === 'UNAVAILABLE' ? 'unavailable' : 'needs_review';
+        candidate.validationReason = validation.error || 'Video validation failed.';
+        ResourceStore.saveResource(candidate);
+        return jsonError(res, 422, validation.error || 'VIDEO_REJECTED', 'The video could not be validated for approval.');
+      }
+      candidate.title = validation.video.title;
+      candidate.description = validation.video.description;
+      candidate.channelName = validation.video.channelTitle;
+      candidate.thumbnailUrl = validation.video.thumbnailUrl;
+      candidate.durationSeconds = validation.video.durationSeconds;
+      candidate.durationFormatted = validation.video.durationFormatted;
+      candidate.publishedAt = validation.video.publishedAt;
+      candidate.validationStatus = 'approved';
+      candidate.validatedAt = new Date().toISOString();
+      candidate.validationReason = undefined;
+      ResourceStore.saveResource(candidate);
       const approved = ResourceStore.approve(resourceId, isPrimary);
       if (!approved) {
         return res.status(404).json({ success: false, error: 'Resource not found' });
@@ -279,8 +379,9 @@ async function startServer() {
   });
 
   // 7. Reject candidate
-  app.post('/api/discovery/reject', (req, res) => {
+  app.post('/api/discovery/reject', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const { resourceId } = req.body;
       if (!resourceId) {
         return res.status(400).json({ success: false, error: 'resourceId is required' });
@@ -299,8 +400,9 @@ async function startServer() {
   });
 
   // 8. Set primary resource for a lesson
-  app.post('/api/discovery/set-primary', (req, res) => {
+  app.post('/api/discovery/set-primary', async (req, res) => {
     try {
+      if (!await requireAdmin(req, res)) return;
       const { lessonId, resourceId } = req.body;
       if (!lessonId || !resourceId) {
         return res.status(400).json({ success: false, error: 'lessonId and resourceId are required' });
@@ -318,32 +420,33 @@ async function startServer() {
     }
   });
 
-  // 9. Manually add custom YouTube resource
-  app.post('/api/discovery/manual-add', (req, res) => {
+  // 9. Validate manual input before the UI permits injection.
+  app.post('/api/discovery/manual-validate', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const videoId = extractYouTubeVideoId(String(req.body?.youtubeUrl || req.body?.videoId || ''));
+    if (!videoId) return jsonError(res, 400, 'INVALID_YOUTUBE_URL', 'Enter a valid YouTube URL or 11-character video ID.');
+    const validation = await validateYouTubeVideo(videoId);
+    if (!validation.success || !validation.video) {
+      const status = validation.error === 'YOUTUBE_API_NOT_CONFIGURED' ? 503 : validation.error === 'YOUTUBE_API_QUOTA_REACHED' ? 429 : 422;
+      return jsonError(res, status, validation.error || 'VIDEO_REJECTED', 'The video is unavailable, private, unembeddable, or could not be verified.');
+    }
+    const video = validation.video;
+    return res.type('application/json').json({ success: true, video: { ...video, videoId, youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`, embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}` } });
+  });
+
+  // 10. Manually add a validated custom YouTube resource
+  app.post('/api/discovery/manual-add', async (req, res) => {
     try {
-      const { lessonId, youtubeUrl, title, whyUseful, channelName } = req.body;
-      if (!lessonId || !youtubeUrl || !title) {
-        return res.status(400).json({ success: false, error: 'lessonId, youtubeUrl, and title are required' });
+      if (!await requireAdmin(req, res)) return;
+      const { lessonId, youtubeUrl, whyUseful } = req.body;
+      if (!lessonId || !youtubeUrl || !getLessonById(lessonId)) {
+        return jsonError(res, 400, 'INVALID_REQUEST', 'A valid lesson and YouTube URL or ID are required.');
       }
-
-      // Extract YouTube ID
-      let videoId = '';
-      try {
-        const urlObj = new URL(youtubeUrl);
-        if (urlObj.hostname.includes('youtu.be')) {
-          videoId = urlObj.pathname.slice(1);
-        } else {
-          videoId = urlObj.searchParams.get('v') || '';
-        }
-      } catch {
-        // Simple regex fallback
-        const match = youtubeUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-        if (match) videoId = match[1];
-      }
-
-      if (!videoId) {
-        return res.status(400).json({ success: false, error: 'Could not extract valid 11-character YouTube video ID' });
-      }
+      const videoId = extractYouTubeVideoId(String(youtubeUrl));
+      if (!videoId) return jsonError(res, 400, 'INVALID_YOUTUBE_URL', 'Enter a valid YouTube URL or 11-character video ID.');
+      const validation = await validateYouTubeVideo(videoId);
+      if (!validation.success || !validation.video) return jsonError(res, 422, validation.error || 'VIDEO_REJECTED', 'The video could not be validated for injection.');
+      const video = validation.video;
 
       const now = new Date().toISOString();
       const id = `res-${lessonId}-${videoId}`;
@@ -352,22 +455,24 @@ async function startServer() {
         lessonId,
         provider: 'youtube',
         providerVideoId: videoId,
-        title,
-        description: whyUseful || '',
-        channelName: channelName || 'Curated Operator',
-        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        title: video.title,
+        description: video.description,
+        channelName: video.channelTitle,
+        thumbnailUrl: video.thumbnailUrl,
         youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
         embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
-        durationSeconds: 600,
-        durationFormatted: '10:00',
-        publishedAt: now,
-        relevanceScore: 99,
-        qualityScore: 99,
+        durationSeconds: video.durationSeconds,
+        durationFormatted: video.durationFormatted,
+        publishedAt: video.publishedAt,
+        relevanceScore: video.relevanceScore,
+        qualityScore: video.qualityScore,
         resourceType: 'EXTERNAL_YOUTUBE',
         status: 'APPROVED',
         isPrimary: true,
         searchQuery: 'manual addition',
         whyUseful: whyUseful || 'Manually approved high-conviction educational guide.',
+        validationStatus: 'approved',
+        validatedAt: now,
         createdAt: now,
         updatedAt: now
       };
@@ -375,7 +480,8 @@ async function startServer() {
       const saved = ResourceStore.saveResource(newResource);
       ResourceStore.setPrimary(lessonId, id);
 
-      res.json({ success: true, resource: saved });
+      console.info('[CONTENT STUDIO] manual injection', { lessonId, videoId });
+      res.type('application/json').json({ success: true, resource: saved });
     } catch (err: any) {
       console.error('Error adding manual resource:', err);
       res.status(500).json({ success: false, error: err.message });

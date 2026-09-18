@@ -10,8 +10,10 @@ import { ChallengesView } from './components/challenges/ChallengesView';
 import { ToolsView } from './components/tools/ToolsView';
 import { GlossaryView } from './components/glossary/GlossaryView';
 import { ContentStudio } from './components/admin/ContentStudio';
+import { LicenseAdmin } from './components/admin/LicenseAdmin';
 import { AuthModal } from './components/auth/AuthModal';
 import { LoginPage } from './components/auth/LoginPage';
+import { AccessPage, ActivatePage, LandingPage } from './components/public/PublicPages';
 import { Menu, Terminal, Loader2 } from 'lucide-react';
 
 function mapPathToTab(path: string): NavigationTab | 'login' | 'register' {
@@ -24,6 +26,7 @@ function mapPathToTab(path: string): NavigationTab | 'login' | 'register' {
   if (cleanPath === '/challenges') return 'challenges';
   if (cleanPath === '/tools') return 'tools';
   if (cleanPath === '/glossary') return 'glossary';
+  if (cleanPath === '/admin/licenses') return 'admin-licenses';
   if (cleanPath === '/admin/content-studio' || cleanPath.startsWith('/admin')) return 'admin-content-studio';
   if (cleanPath === '/dashboard' || cleanPath === '/progress' || cleanPath === '/settings' || cleanPath === '') return 'dashboard';
   return 'dashboard';
@@ -39,12 +42,16 @@ function mapTabToPath(tab: NavigationTab): string {
     case 'tools': return '/tools';
     case 'glossary': return '/glossary';
     case 'admin-content-studio': return '/admin/content-studio';
+    case 'admin-licenses': return '/admin/licenses';
     default: return '/dashboard';
   }
 }
 
 function UniversityApp() {
-  const { isAuthenticated, authLoading } = useUniversity();
+  const { isAuthenticated, authLoading, firebaseUser, user } = useUniversity();
+  const isAdmin = ['alexkingsley@gmail.com', 'precilexis@gmail.com'].includes((firebaseUser?.email || '').toLowerCase());
+  const accessExpiresAt = user.accessExpiresAt ? new Date(user.accessExpiresAt).getTime() : null;
+  const hasActiveLicense = user.accessStatus === 'active' && (!accessExpiresAt || accessExpiresAt > Date.now());
 
   const [activeTab, setActiveTab] = useState<NavigationTab>(() => {
     const initial = mapPathToTab(window.location.pathname);
@@ -59,6 +66,13 @@ function UniversityApp() {
   const [returnToTab, setReturnToTab] = useState<NavigationTab>('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [publicPath, setPublicPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const update = () => setPublicPath(window.location.pathname);
+    window.addEventListener('popstate', update);
+    return () => window.removeEventListener('popstate', update);
+  }, []);
 
   // Handle browser back/forward buttons
   useEffect(() => {
@@ -79,6 +93,7 @@ function UniversityApp() {
   // Protected Route enforcement: Redirect unauthenticated operators to /login
   useEffect(() => {
     if (authLoading) return;
+    if (publicPath === '/' || publicPath === '/access' || publicPath === '/activate') return;
 
     if (!isAuthenticated) {
       const currentRoute = mapPathToTab(window.location.pathname);
@@ -99,7 +114,15 @@ function UniversityApp() {
         window.history.replaceState({}, '', mapTabToPath(dest));
       }
     }
-  }, [isAuthenticated, authLoading, authRoute, returnToTab]);
+  }, [isAuthenticated, authLoading, authRoute, returnToTab, publicPath]);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || isAdmin || hasActiveLicense) return;
+    if (publicPath === '/' || publicPath === '/access' || publicPath === '/activate') return;
+    setAuthRoute(null);
+    window.history.replaceState({}, '', '/activate');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [authLoading, isAuthenticated, isAdmin, hasActiveLicense, publicPath]);
 
   const handleNavigate = useCallback((tab: NavigationTab) => {
     setActiveTab(tab);
@@ -135,6 +158,10 @@ function UniversityApp() {
     );
   }
 
+  if (publicPath === '/') return <LandingPage />;
+  if (publicPath === '/access') return <AccessPage />;
+  if (publicPath === '/activate') return <ActivatePage />;
+
   // Unauthenticated: Show dedicated /login or /register terminal view
   if (!isAuthenticated || authRoute !== null) {
     return (
@@ -144,6 +171,11 @@ function UniversityApp() {
         onSuccess={handleAuthSuccess}
       />
     );
+  }
+
+  if ((activeTab === 'admin-content-studio' || activeTab === 'admin-licenses') && !isAdmin) {
+    window.history.replaceState({}, '', '/dashboard');
+    return <div className="min-h-screen bg-[#0A0A0B] text-[#EDEDEF] flex items-center justify-center font-mono text-sm">ADMIN ACCESS REQUIRED</div>;
   }
 
   return (
@@ -219,6 +251,10 @@ function UniversityApp() {
 
           {activeTab === 'admin-content-studio' && (
             <ContentStudio />
+          )}
+
+          {activeTab === 'admin-licenses' && (
+            <LicenseAdmin />
           )}
         </main>
       </div>

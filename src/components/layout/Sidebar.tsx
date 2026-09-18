@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Shield,
   Layers,
-  Tv
+  Tv,
+  KeyRound
 } from 'lucide-react';
 import { useUniversity } from '../../context/UniversityContext';
 
@@ -23,7 +24,8 @@ export type NavigationTab =
   | 'challenges'
   | 'tools'
   | 'glossary'
-  | 'admin-content-studio';
+  | 'admin-content-studio'
+  | 'admin-licenses';
 
 interface SidebarProps {
   activeTab: NavigationTab;
@@ -38,7 +40,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   setMobileOpen
 }) => {
-  const { currentLevel, nextLevel, totalLessonsCompleted, progressPercentage } = useUniversity();
+  const { currentLevel, nextLevel, totalLessonsCompleted, progressPercentage, firebaseUser } = useUniversity();
+  // Visibility is only a convenience; server endpoints independently enforce this allowlist.
+  const isAdmin = ['alexkingsley@gmail.com', 'precilexis@gmail.com'].includes((firebaseUser?.email || '').toLowerCase());
 
   const navItems = [
     {
@@ -83,12 +87,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BookMarked,
       badge: null
     },
-    {
+    ...(isAdmin ? [{
       id: 'admin-content-studio' as NavigationTab,
       label: 'Content Studio',
       icon: Tv,
       badge: 'ADMIN'
-    }
+    }, {
+      id: 'admin-licenses' as NavigationTab,
+      label: 'License Control',
+      icon: KeyRound,
+      badge: 'ADMIN'
+    }] : [])
   ];
 
   const handleSelect = (tab: NavigationTab) => {
