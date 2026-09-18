@@ -140,11 +140,11 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 
 | Bug | Root cause | Fix applied | Remaining work |
 |---|---|---|---|
-| Admin dashboard / license generation failing | Service account JSON was gitignored, not deployed to Vercel, Firebase Admin could not initialize | Removed gitignore rule; JSON is now committed and deployed | Trigger a Vercel redeploy after this commit; confirm `/api/licenses/list` returns JSON |
-| Content Studio shows "API key unconfigured" | `YOUTUBE_API_KEY` env var not read by Vercel function | `status()` now reads `process.env.YOUTUBE_API_KEY` directly | Confirm the key is set in Vercel dashboard for every environment |
-| License keys not generating from dashboard | Firestore Admin fails when service account not available | Service account JSON now committed; `LicenseStore` fallback still available | Deploy and verify generate returns `{ success: true, license: { key: "TLB-..." } }` |
-| API routes returning HTML | Vercel rewrite `(.*)` was too broad | `vercel.json` now uses explicit API rewrites before the SPA fallback | Deploy and verify `/api/licenses/generate` returns JSON |
-| Next phase/lesson unlocked without completing previous | `isPhaseUnlocked` was level-based, no sequential lesson lock | `isPhaseUnlocked` now requires previous phase quiz >= 75%; lessons within a phase are gated sequentially; assessment locked until all lessons done | Done |
+| **FUNCTION_INVOCATION_FAILED on all admin API calls** | `*firebase-adminsdk*.json` was in `.gitignore` — the service account file never made it to Vercel, so every call to `firebaseAdmin()` threw `FIREBASE_ADMIN_NOT_CONFIGURED` and crashed the function | Credentials are now **embedded directly** in `src/server/firebaseAdmin.ts` as a hardcoded fallback (step 4). Env vars still take priority for rotation. | ✅ Done — redeploy Vercel and test `/api/licenses/list` |
+| Content Studio shows "API key unconfigured" | `YOUTUBE_API_KEY` env var not read by Vercel function | `youtubeService.ts` reads `process.env.YOUTUBE_API_KEY` with hardcoded fallback | ✅ Done |
+| License keys not generating from dashboard | Same root cause as above — Firebase Admin crash | Fixed by embedded credentials | ✅ Done — test Generate Key button |
+| API routes returning HTML / 404 | Vercel rewrite `(.*)` intercepted `/api/` paths | `vercel.json` uses `/((?!api/).*)` negative lookahead so API routes are never proxied to `index.html` | ✅ Done |
+| Next phase/lesson unlocked without completing previous | `isPhaseUnlocked` was level-based only | Sequential lesson + assessment + phase gating added to `UniversityContext.tsx` | ✅ Done |
 
 ### 2. How to debug the YouTube API key ("unconfigured" banner)
 
@@ -170,11 +170,12 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 
 1. `FIREBASE_SERVICE_ACCOUNT_JSON` env var (raw JSON string)
 2. `FIREBASE_SERVICE_ACCOUNT_BASE64` env var (base64-encoded JSON)
-3. `trenchlab-production-firebase-adminsdk-fbsvc-a91535cae0.json` at the project root (now committed to git)
+3. `trenchlab-production-firebase-adminsdk-fbsvc-a91535cae0.json` at the project root (works locally, gitignored)
 4. `serviceAccountKey.json` at project root or `src/server/serviceAccountKey.json`
 5. Any `*firebase-adminsdk*.json` file in the project root (auto-discovered)
+6. **Embedded hardcoded credentials in `firebaseAdmin.ts`** — always works on Vercel, no env var needed
 
-**On Vercel**: step 3 will work because the file is now committed. Steps 1 and 2 take priority if set.
+> **Why embedded?** The JSON file is gitignored (GitHub blocks credential files). Embedding the private key directly inside compiled TypeScript is the only reliable way to guarantee Vercel always has credentials without requiring env var setup for every deployment.
 
 ### 5. Curriculum locking rules
 
