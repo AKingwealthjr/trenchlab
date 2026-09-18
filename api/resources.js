@@ -528,7 +528,7 @@ function sendJson(res, status, payload) {
   return res.send(JSON.stringify(payload));
 }
 
-// api/resources.ts
+// api-src/resources.ts
 async function handler(req, res) {
   if (req.method !== "GET") return sendJson(res, 405, { success: false, error: "METHOD_NOT_ALLOWED", message: "Use GET." });
   const lessonId = typeof req.query.lessonId === "string" ? req.query.lessonId : null;

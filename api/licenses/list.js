@@ -1,14 +1,12 @@
-// api/licenses/[action].js
+// api-src/licenses/[action].ts
 import { createHash as createHash2, randomBytes as randomBytes2 } from "node:crypto";
+
+// src/server/firebaseAdmin.ts
 import fs from "fs";
 import path from "path";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import fs2 from "fs";
-import path2 from "path";
-import { createHash, randomBytes } from "node:crypto";
-import { createPublicKey, verify } from "node:crypto";
 function findServiceAccountFile() {
   const cwd = process.cwd();
   const potentialPaths = [
@@ -121,6 +119,11 @@ function adminEmails() {
     (process.env.ADMIN_EMAILS || "1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean)
   );
 }
+
+// src/server/licenseStore.ts
+import fs2 from "fs";
+import path2 from "path";
+import { createHash, randomBytes } from "node:crypto";
 var STORAGE_FILE_PATH = path2.resolve(process.cwd(), "src/data/storedLicenses.json");
 var hash = (key) => createHash("sha256").update(key.trim().toUpperCase()).digest("hex");
 var createRawKey = () => `TLB-${randomBytes(6).toString("hex").toUpperCase().match(/.{1,4}/g).join("-")}`;
@@ -282,6 +285,9 @@ var LicenseStoreManager = class {
   }
 };
 var LicenseStore = new LicenseStoreManager();
+
+// src/server/vercelApi.ts
+import { createPublicKey, verify } from "node:crypto";
 var firebaseCertificates = null;
 var certificatesExpireAt = 0;
 async function verifyFirebaseTokenFallback(token) {
@@ -366,6 +372,8 @@ async function requireUser(req, res) {
   }
   return claims;
 }
+
+// api-src/licenses/[action].ts
 var hash2 = (key) => createHash2("sha256").update(key.trim().toUpperCase()).digest("hex");
 var createKey = () => `TLB-${randomBytes2(6).toString("hex").toUpperCase().match(/.{1,4}/g).join("-")}`;
 var now2 = () => (/* @__PURE__ */ new Date()).toISOString();
@@ -571,7 +579,7 @@ async function handler(req, res) {
   }
 }
 
-// api/licenses/list.ts
+// api-src/licenses/list.ts
 function listHandler(req, res) {
   req.query = { ...req.query, action: "list" };
   return handler(req, res);

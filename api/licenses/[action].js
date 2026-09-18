@@ -1,4 +1,4 @@
-// api/licenses/[action].ts
+// api-src/licenses/[action].ts
 import { createHash as createHash2, randomBytes as randomBytes2 } from "node:crypto";
 
 // src/server/firebaseAdmin.ts
@@ -373,7 +373,7 @@ async function requireUser(req, res) {
   return claims;
 }
 
-// api/licenses/[action].ts
+// api-src/licenses/[action].ts
 var hash2 = (key) => createHash2("sha256").update(key.trim().toUpperCase()).digest("hex");
 var createKey = () => `TLB-${randomBytes2(6).toString("hex").toUpperCase().match(/.{1,4}/g).join("-")}`;
 var now2 = () => (/* @__PURE__ */ new Date()).toISOString();

@@ -1,26 +1,15 @@
 {
-  "buildCommand": "vite build",
-  "outputDirectory": "dist",
-  "framework": "vite",
   "rewrites": [
     {
       "source": "/__/auth/:match*",
       "destination": "https://trenchlab-production.firebaseapp.com/__/auth/:match*"
     },
     {
-      "source": "/api/licenses/:action",
-      "destination": "/api/licenses/:action"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     },
     {
-      "source": "/api/discovery/:action",
-      "destination": "/api/discovery/:action"
-    },
-    {
-      "source": "/api/:match*",
-      "destination": "/api/:match*"
-    },
-    {
-      "source": "/((?!api/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]

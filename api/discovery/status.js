@@ -1,12 +1,9 @@
-// api/discovery/[action].js
+// src/server/firebaseAdmin.ts
 import fs from "fs";
 import path from "path";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { createPublicKey, verify } from "node:crypto";
-import fs2 from "fs";
-import path2 from "path";
 function findServiceAccountFile() {
   const cwd = process.cwd();
   const potentialPaths = [
@@ -119,6 +116,9 @@ function adminEmails() {
     (process.env.ADMIN_EMAILS || "1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean)
   );
 }
+
+// src/server/vercelApi.ts
+import { createPublicKey, verify } from "node:crypto";
 var firebaseCertificates = null;
 var certificatesExpireAt = 0;
 async function verifyFirebaseTokenFallback(token) {
@@ -184,6 +184,8 @@ async function requireAdmin(req, res) {
   }
   return claims;
 }
+
+// src/data/curriculumPhases3to6.ts
 var PHASES_3_TO_6 = [
   {
     id: 3,
@@ -2780,6 +2782,8 @@ var PHASES_3_TO_6 = [
     ]
   }
 ];
+
+// src/data/curriculumPhases7to12.ts
 var PHASES_7_TO_12 = [
   {
     id: 7,
@@ -6748,10 +6752,14 @@ var PHASES_7_TO_12 = [
     ]
   }
 ];
+
+// src/data/curriculumPhases3to12.ts
 var PHASES_3_TO_12 = [
   ...PHASES_3_TO_6,
   ...PHASES_7_TO_12
 ];
+
+// src/data/videoData.ts
 var VERIFIED_VIDEOS = {
   whatIsCrypto: {
     title: "What is Cryptocurrency? (Animated Explanation for Beginners)",
@@ -6869,6 +6877,8 @@ var VERIFIED_VIDEOS = {
     whyUseful: "Mathematical formulas for calculating risk per trade, stop loss placement, and avoiding ruin in volatile assets."
   }
 };
+
+// src/data/curriculumData.ts
 var INITIAL_PHASES = [
   // ==================== PHASE 01 ====================
   {
@@ -7950,6 +7960,8 @@ function getLessonById(lessonId) {
   }
   return void 0;
 }
+
+// src/lib/searchProfiles.ts
 var GLOBAL_NEGATIVE_KEYWORDS = [
   "100x guaranteed",
   "get rich quick",
@@ -8247,6 +8259,8 @@ function generateSearchProfile(lesson, phaseTitle) {
     preferredContentType: "educational_tutorial"
   };
 }
+
+// src/lib/videoScoring.ts
 function parseYouTubeDuration(isoDuration) {
   if (!isoDuration) return { seconds: 0, formatted: "00:00" };
   const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -8358,6 +8372,8 @@ function scoreVideoCandidate(video, profile) {
     whyUseful
   };
 }
+
+// src/server/youtubeService.ts
 function extractYouTubeVideoId(value) {
   const input = value.trim();
   if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
@@ -8578,6 +8594,10 @@ async function searchYouTubeForLesson(lessonOrProfile, maxResults = 5) {
     videos: accumulatedVideos.slice(0, maxResults)
   };
 }
+
+// src/server/resourceStore.ts
+import fs2 from "fs";
+import path2 from "path";
 var STORAGE_FILE_PATH = path2.resolve(process.cwd(), "src/data/storedResources.json");
 var resourcesCache = /* @__PURE__ */ new Map();
 var isInitialized = false;
@@ -8976,6 +8996,8 @@ var ResourceStore = {
     };
   }
 };
+
+// api-src/discovery/[action].ts
 var now = () => (/* @__PURE__ */ new Date()).toISOString();
 var allLessonIds = () => CURRICULUM_DATA.flatMap((phase) => phase.lessons.map((lesson) => lesson.id));
 function getDb() {
@@ -9166,7 +9188,7 @@ async function handler(req, res) {
   }
 }
 
-// api/discovery/status.ts
+// api-src/discovery/status.ts
 function statusHandler(req, res) {
   req.query = { ...req.query, action: "status" };
   return handler(req, res);

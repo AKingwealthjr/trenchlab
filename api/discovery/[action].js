@@ -8997,7 +8997,7 @@ var ResourceStore = {
   }
 };
 
-// api/discovery/[action].ts
+// api-src/discovery/[action].ts
 var now = () => (/* @__PURE__ */ new Date()).toISOString();
 var allLessonIds = () => CURRICULUM_DATA.flatMap((phase) => phase.lessons.map((lesson) => lesson.id));
 function getDb() {
