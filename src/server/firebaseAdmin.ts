@@ -20,5 +20,5 @@ export function firebaseAdmin() {
 }
 
 export function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS || 'alexkingsley@gmail.com,precilexis@gmail.com').split(',').map(email => email.trim().toLowerCase()).filter(Boolean));
+  return new Set((process.env.ADMIN_EMAILS || '1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com').split(',').map(email => email.trim().toLowerCase()).filter(Boolean));
 }

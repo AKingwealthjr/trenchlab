@@ -54,7 +54,7 @@ Use Vercel value types this way:
 
 ```dotenv
 YOUTUBE_API_KEY=
-ADMIN_EMAILS=alexkingsley@gmail.com,precilexis@gmail.com
+ADMIN_EMAILS=1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com
 FIREBASE_PROJECT_ID=trenchlab-production
 FIREBASE_SERVICE_ACCOUNT_JSON={...entire Firebase service-account JSON...}
 
@@ -93,7 +93,7 @@ Authenticated Firebase/YouTube integration testing has not been run because the 
 
 After Vercel env vars are configured and the functions are deployed:
 
-1. Sign in as `alexkingsley@gmail.com` and `precilexis@gmail.com`; verify Content Studio and License Control are visible and API calls succeed.
+1. Sign in as `1alexkingsley@gmail.com`, `alexkingsley@gmail.com`, or `precilexis@gmail.com`; verify Content Studio and License Control are visible and API calls succeed.
 2. Sign in as a normal user; verify Content Studio and License Control endpoints return `403`.
 3. Generate a license in `/admin/licenses`; copy the raw key immediately.
 4. Activate that key from `/activate`; verify the user lands on `/dashboard` and Firestore has active entitlement fields.

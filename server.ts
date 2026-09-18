@@ -21,7 +21,7 @@ function jsonError(res: express.Response, status: number, error: string, message
 }
 
 function getAdminEmails() {
-  return new Set((process.env.ADMIN_EMAILS || 'alexkingsley@gmail.com,precilexis@gmail.com').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
+  return new Set((process.env.ADMIN_EMAILS || '1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
 }
 
 async function verifyFirebaseToken(token: string): Promise<FirebaseTokenClaims | null> {

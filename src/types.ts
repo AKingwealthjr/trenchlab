@@ -209,3 +209,15 @@ export interface UserProgress {
   lastActiveDate: string;
   journalEntries: TradeJournalEntry[];
 }
+
+export const DEFAULT_ADMIN_EMAILS = [
+  '1alexkingsley@gmail.com',
+  'alexkingsley@gmail.com',
+  'precilexis@gmail.com'
+] as const;
+
+export function checkIsAdmin(email?: string | null): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return DEFAULT_ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === normalized);
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UniversityProvider, useUniversity } from './context/UniversityContext';
+import { checkIsAdmin } from './types';
 import { Header } from './components/layout/Header';
 import { Sidebar, NavigationTab } from './components/layout/Sidebar';
 import { Dashboard } from './components/dashboard/Dashboard';
@@ -49,7 +50,7 @@ function mapTabToPath(tab: NavigationTab): string {
 
 function UniversityApp() {
   const { isAuthenticated, authLoading, firebaseUser, user } = useUniversity();
-  const isAdmin = ['alexkingsley@gmail.com', 'precilexis@gmail.com'].includes((firebaseUser?.email || '').toLowerCase());
+  const isAdmin = checkIsAdmin(firebaseUser?.email);
   const accessExpiresAt = user.accessExpiresAt ? new Date(user.accessExpiresAt).getTime() : null;
   const hasActiveLicense = user.accessStatus === 'active' && (!accessExpiresAt || accessExpiresAt > Date.now());
 
@@ -93,7 +94,13 @@ function UniversityApp() {
   // Protected Route enforcement: Redirect unauthenticated operators to /login
   useEffect(() => {
     if (authLoading) return;
-    if (publicPath === '/' || publicPath === '/access' || publicPath === '/activate') return;
+    if (publicPath === '/' || publicPath === '/access') return;
+
+    if ((isAdmin || hasActiveLicense) && publicPath === '/activate') {
+      window.history.replaceState({}, '', '/dashboard');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
 
     if (!isAuthenticated) {
       const currentRoute = mapPathToTab(window.location.pathname);

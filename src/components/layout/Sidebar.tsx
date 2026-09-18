@@ -15,6 +15,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { useUniversity } from '../../context/UniversityContext';
+import { checkIsAdmin } from '../../types';
 
 export type NavigationTab = 
   | 'dashboard'
@@ -42,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { currentLevel, nextLevel, totalLessonsCompleted, progressPercentage, firebaseUser } = useUniversity();
   // Visibility is only a convenience; server endpoints independently enforce this allowlist.
-  const isAdmin = ['alexkingsley@gmail.com', 'precilexis@gmail.com'].includes((firebaseUser?.email || '').toLowerCase());
+  const isAdmin = checkIsAdmin(firebaseUser?.email);
 
   const navItems = [
     {
