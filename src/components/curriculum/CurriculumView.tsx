@@ -19,7 +19,7 @@ import { LessonViewerModal } from './LessonViewerModal';
 import { QuizModal } from './QuizModal';
 
 export const CurriculumView: React.FC = () => {
-  const { progress, isPhaseUnlocked, currentLevel } = useUniversity();
+  const { progress, isPhaseUnlocked, isLessonUnlocked, isPhaseAssessmentUnlocked, currentLevel } = useUniversity();
 
   const [selectedPhaseId, setSelectedPhaseId] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -199,7 +199,7 @@ export const CurriculumView: React.FC = () => {
                   {!isUnlocked && (
                     <span className="text-xs font-mono text-rose-400 bg-rose-950/40 border border-rose-800/40 px-2 py-0.5 rounded flex items-center space-x-1">
                       <Lock className="w-3 h-3" />
-                      <span>LOCKED (Requires Level {currentPhase.levelRequired})</span>
+                      <span>LOCKED (Complete Phase {currentPhase.id - 1} lessons & assessment ≥75%)</span>
                     </span>
                   )}
                 </div>

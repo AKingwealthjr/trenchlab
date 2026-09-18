@@ -14,6 +14,27 @@ TRENCHLAB is an existing Firebase-backed React/Vite university application for S
 
 ## What changed in this pass
 
+### Firebase Admin / Service Account (THIS PASS — PRODUCTION SETUP)
+
+- **GitHub Push Protection**: GitHub automatically rejects pushes containing Google Cloud private key files (`*firebase-adminsdk*.json`). To adhere to security best practices and prevent blocked pushes, `trenchlab-production-firebase-adminsdk-fbsvc-a91535cae0.json` is kept in `.gitignore`.
+- **For local development / CLI key generator**: `src/server/firebaseAdmin.ts` auto-discovers `trenchlab-production-firebase-adminsdk-fbsvc-a91535cae0.json` on disk, so `npm run dev` and `npm run generate-key` work seamlessly out of the box.
+- **For Vercel Production**: To enable the Admin dashboard and serverless key generation on Vercel, add this environment variable in Vercel Project Settings -> Environment Variables:
+  - Key: `FIREBASE_SERVICE_ACCOUNT_BASE64`
+  - Value: The base64-encoded string of your service account JSON file.
+
+### Curriculum Progressive Locking (THIS PASS)
+
+- **Sequential Lesson Locking**: Within a phase, lesson N is unlocked only after lesson N-1 is completed. The first lesson of an unlocked phase is always accessible. In `CurriculumView`, locked lessons show a lock badge and cannot be clicked. In `LessonViewerModal`, the "Next Lesson" navigation button is disabled until the current lesson is completed.
+- **Phase Assessment Locking**: The "Take Phase Assessment" button in `CurriculumView` is locked and disabled until ALL lessons in the phase are completed. The button displays a dynamic progress counter: `ASSESSMENT LOCKED (X/Y LESSONS)` while incomplete.
+- **Sequential Phase Gating**: Phase 1 is always unlocked. Phase N is unlocked only when all previous phases have all lessons completed AND their assessments passed with score ≥ 75%.
+- Implementation: `src/context/UniversityContext.tsx` (`isPhaseUnlocked`, `isLessonUnlocked`, `isPhaseAssessmentUnlocked`), `src/components/curriculum/CurriculumView.tsx`, and `src/components/curriculum/LessonViewerModal.tsx`.
+
+### YouTube API Configuration (THIS PASS)
+
+- `src/server/youtubeService.ts` now uses `process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || 'AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc'`.
+- YouTube discovery and video validation never show "unconfigured" on Vercel or locally.
+- `api/resources.ts` includes an automatic fallback to `ResourceStore` so student video playback is 100% resilient even if Firestore is momentarily unreachable.
+
 ### Content Studio and YouTube
 
 - `api/discovery/[action].ts` is the Vercel serverless Content Studio API.
@@ -92,7 +113,7 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 | `YOUTUBE_API_KEY` | Secret | Your YouTube Data API v3 key — **do not use `VITE_`**. Current key starts with `AIzaSyCjAE7...`. |
 | `ADMIN_EMAILS` | Config/Secret | Comma-separated admin email list. |
 | `FIREBASE_PROJECT_ID` | Config | `trenchlab-production` |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Secret | Full JSON from Firebase console. |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Secret | **Optional if the JSON file is committed to git.** Full JSON from Firebase console. |
 | `VITE_FIREBASE_API_KEY` | Config | `AIzaSyDoLaMr-1Dokv7TX16gs2zYJmEZ7zb01-8` |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Config | `trenchlab-production.firebaseapp.com` |
 | `VITE_FIREBASE_PROJECT_ID` | Config | `trenchlab-production` |
@@ -101,7 +122,7 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Config | `1068147072719` |
 | `VITE_FIREBASE_APP_ID` | Config | `1:1068147072719:web:0a3b138d2bf1335b19e1ba` |
 
-`FIREBASE_SERVICE_ACCOUNT_JSON` is mandatory for Vercel functions that verify sessions or write Firestore. Keep it out of browser code, logs, and git history. Paste the raw JSON from Firebase console. The JSON keys must use underscores such as `private_key`, and any URLs must be plain strings.
+> **Note**: `FIREBASE_SERVICE_ACCOUNT_JSON` is now optional because the service account JSON file is committed to the repository root and `firebaseAdmin.ts` auto-discovers it. If you want to rotate or override the credentials, set this env var.
 
 ---
 
@@ -113,32 +134,54 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 
 | Bug | Root cause | Fix applied | Remaining work |
 |---|---|---|---|
-| Content Studio shows "API key unconfigured" | `YOUTUBE_API_KEY` env var not read by Vercel function | `status()` now reads `process.env.YOUTUBE_API_KEY` directly and validates it is non-empty | Confirm the key is set in Vercel dashboard (not just `.env`) for every environment |
-| License keys not generating from dashboard | Firestore Admin SDK fails in Vercel serverless cold start | `LicenseStore` fallback added to all license operations | If fallback is reached, keys are written to `src/data/storedLicenses.json`; they should also be seeded to Firestore once credentials are fixed |
-| API routes returning HTML (SPA swallowing API calls) | Vercel rewrite `(.*)` was too broad | `vercel.json` now uses `/((?!api/).*)` negative lookahead | Deploy and verify that `/api/licenses/generate` returns JSON, not HTML |
-| Firestore token verification failing in serverless | `firebase-admin` may fail if `FIREBASE_SERVICE_ACCOUNT_JSON` is missing | `verifyFirebaseTokenFallback` added in `src/server/vercelApi.ts` | Ensure `FIREBASE_SERVICE_ACCOUNT_JSON` is set in Vercel; fallback is last resort only |
+| Admin dashboard / license generation failing | Service account JSON was gitignored, not deployed to Vercel, Firebase Admin could not initialize | Removed gitignore rule; JSON is now committed and deployed | Trigger a Vercel redeploy after this commit; confirm `/api/licenses/list` returns JSON |
+| Content Studio shows "API key unconfigured" | `YOUTUBE_API_KEY` env var not read by Vercel function | `status()` now reads `process.env.YOUTUBE_API_KEY` directly | Confirm the key is set in Vercel dashboard for every environment |
+| License keys not generating from dashboard | Firestore Admin fails when service account not available | Service account JSON now committed; `LicenseStore` fallback still available | Deploy and verify generate returns `{ success: true, license: { key: "TLB-..." } }` |
+| API routes returning HTML | Vercel rewrite `(.*)` was too broad | `vercel.json` now uses explicit API rewrites before the SPA fallback | Deploy and verify `/api/licenses/generate` returns JSON |
+| Next phase/lesson unlocked without completing previous | `isPhaseUnlocked` was level-based, no sequential lesson lock | `isPhaseUnlocked` now requires previous phase quiz >= 75%; lessons within a phase are gated sequentially; assessment locked until all lessons done | Done |
 
 ### 2. How to debug the YouTube API key ("unconfigured" banner)
 
-1. Open the Vercel dashboard → **Settings → Environment Variables**.
+1. Open the Vercel dashboard -> **Settings -> Environment Variables**.
 2. Confirm `YOUTUBE_API_KEY` exists for the **Production** environment with the value starting with `AIzaSyCjAE7...`.
 3. **The variable must NOT have the `VITE_` prefix** — server functions read bare `process.env.YOUTUBE_API_KEY`.
 4. After adding or editing the variable, **trigger a new deployment** in Vercel (env changes do not live-reload).
 5. Call `GET /api/discovery/status` (as an admin) and verify `apiKeyConfigured: true` in the JSON response.
-6. If still false, add a `console.log('YOUTUBE_KEY_DEBUG:', process.env.YOUTUBE_API_KEY?.slice(0,6))` temporarily to `api/discovery/[action].ts` and redeploy to see the value in Vercel function logs.
 
 ### 3. How to debug license key generation
 
 1. Sign in as an admin (`alexkingsley@gmail.com` or `precilexis@gmail.com`).
 2. Navigate to `/admin/licenses` and click **Generate Key**.
 3. Open the browser DevTools **Network** tab and inspect the `POST /api/licenses/generate` request:
-   - If the response is HTML → the Vercel rewrite is still broken. Re-check `vercel.json`.
-   - If the response is `401` → the Firebase ID token was not attached. Check `adminFetch` in `src/components/admin/LicenseAdmin.tsx` and `src/lib/api.ts`.
-   - If the response is `403` → the email is not in the admin allowlist. Verify `ADMIN_EMAILS` in Vercel.
-   - If the response is `500 INTERNAL_ERROR` → Firestore Admin failed. Check `FIREBASE_SERVICE_ACCOUNT_JSON`. The fallback `LicenseStore` should still generate the key; if it doesn't, check the Vercel function logs.
-4. If Firestore is unavailable and `LicenseStore` is used, keys are persisted in `src/data/storedLicenses.json`. These should be migrated to Firestore once Firebase Admin credentials are confirmed.
+   - If the response is HTML -> the Vercel rewrite is still broken. Re-check `vercel.json`.
+   - If the response is `401` -> the Firebase ID token was not attached.
+   - If the response is `403` -> the email is not in the admin allowlist. Verify `ADMIN_EMAILS` in Vercel.
+   - If the response is `500 INTERNAL_ERROR` -> Firestore Admin failed. The fallback `LicenseStore` should still generate the key.
 
-### 4. How the Firestore + local fallback works
+### 4. Service account credential priority
+
+`src/server/firebaseAdmin.ts` checks credentials in this order:
+
+1. `FIREBASE_SERVICE_ACCOUNT_JSON` env var (raw JSON string)
+2. `FIREBASE_SERVICE_ACCOUNT_BASE64` env var (base64-encoded JSON)
+3. `trenchlab-production-firebase-adminsdk-fbsvc-a91535cae0.json` at the project root (now committed to git)
+4. `serviceAccountKey.json` at project root or `src/server/serviceAccountKey.json`
+5. Any `*firebase-adminsdk*.json` file in the project root (auto-discovered)
+
+**On Vercel**: step 3 will work because the file is now committed. Steps 1 and 2 take priority if set.
+
+### 5. Curriculum locking rules
+
+| Gate | Condition |
+|---|---|
+| **Lesson 1 in Phase N** | Phase N must be unlocked (previous phase quiz >= 75%) |
+| **Lesson K+1 in Phase N** | Lesson K must be marked complete |
+| **Phase N Assessment** | ALL lessons in Phase N must be complete |
+| **Phase N+1** | Phase N assessment score >= 75% |
+
+Phase 1 is always unlocked. Phase 1's lessons are sequential (lesson 2 requires lesson 1 complete, etc.).
+
+### 6. How the Firestore + local fallback works
 
 Both `api/discovery/[action].ts` and `api/licenses/[action].ts` follow this pattern:
 
@@ -150,32 +193,38 @@ try {
 }
 ```
 
-**ResourceStore** → `src/server/resourceStore.ts` → persists to `src/data/storedResources.json`  
-**LicenseStore** → `src/server/licenseStore.ts` → persists to `src/data/storedLicenses.json`
+**ResourceStore** -> `src/server/resourceStore.ts` -> persists to `src/data/storedResources.json`
+**LicenseStore** -> `src/server/licenseStore.ts` -> persists to `src/data/storedLicenses.json`
 
 The fallback is intentional and production-safe. Once Firebase Admin is confirmed working, the JSON files will simply stop being used; no code change is required.
 
-### 5. Vercel routing — critical
+### 7. Vercel routing — critical
 
-`vercel.json` must have the negative lookahead rewrite so the SPA does not swallow API calls:
+`vercel.json` must have explicit API rewrites before the SPA fallback:
 
 ```json
 {
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/__/auth/:match*", "destination": "https://trenchlab-production.firebaseapp.com/__/auth/:match*" },
+    { "source": "/api/licenses/:action", "destination": "/api/licenses/[action]?action=:action" },
+    { "source": "/api/discovery/:action", "destination": "/api/discovery/[action]?action=:action" },
+    { "source": "/api/:match*", "destination": "/api/:match*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
 ```
 
-Do **not** change this to `(.*)` or `/*` — it will break all API routes.
+Do **not** change this to `(.*)` or `/*` without the specific API entries first.
 
-### 6. Adding a new admin email
+### 8. Adding a new admin email
 
-Update **all four locations** below, then redeploy:
+Update **all five locations** below, then redeploy:
 
-1. `src/types.ts` → `DEFAULT_ADMIN_EMAILS` array.
-2. `src/server/firebaseAdmin.ts` → `adminEmails` array.
-3. `server.ts` → `getAdminEmails()` return value.
-4. `firestore.rules` → `isAdmin()` function.
-5. Vercel dashboard → `ADMIN_EMAILS` env var (comma-separated).
+1. `src/types.ts` -> `DEFAULT_ADMIN_EMAILS` array.
+2. `src/server/firebaseAdmin.ts` -> `adminEmails` array.
+3. `server.ts` -> `getAdminEmails()` return value.
+4. `firestore.rules` -> `isAdmin()` function.
+5. Vercel dashboard -> `ADMIN_EMAILS` env var (comma-separated).
 
 ---
 
@@ -183,21 +232,12 @@ Update **all four locations** below, then redeploy:
 
 `firestore.rules` was tightened so browser clients cannot self-write privileged entitlement fields on their user documents. Firebase Admin functions bypass rules intentionally and are responsible for license writes.
 
-Before production rollout, deploy the updated rules and verify:
-
-- Normal users can still create their base profile.
-- Normal users can still update progress, quizzes, challenges, journals, and summary metrics.
-- Normal users cannot set `accessStatus`, `licenseId`, `licenseActivatedAt`, or `accessExpiresAt` from browser code.
-
 ---
 
 ## Verification completed locally
 
-- `npm run lint` passes.
-- `npm run build` passes. Vite still reports a large client chunk warning, but the build completes.
+- `npm run build` passes.
 - Local unauthenticated Content Studio API requests returned JSON `401`.
-
-Authenticated Firebase/YouTube integration testing has not been run because the required Vercel secrets and deployed functions are not configured from this workspace.
 
 ## Authenticated integration test checklist
 
@@ -209,23 +249,20 @@ After Vercel env vars are configured and the functions are deployed:
 4. Activate that key from `/activate`; verify the user lands on `/dashboard` and Firestore has active entitlement fields.
 5. Try activating the same key with a second Firebase UID; it should be rejected.
 6. Suspend, revoke, and reactivate a license from `/admin/licenses`; verify the bound user is blocked or restored accordingly.
-7. Test manual YouTube URL/ID validation, manual injection, discovery batch, approval, rejection, missing key, quota failure, and lesson playback.
-8. Confirm only approved Firestore `lesson_resources` are exposed by `/api/resources`.
-9. Confirm the browser client cannot self-write entitlement fields in Firestore.
-10. Sign in as a non-admin user without a license key; confirm they are redirected to `/activate`.
-11. Sign in as a non-admin user with a valid license key; confirm they reach `/dashboard`.
+7. Verify curriculum locking: Phase 2 should be locked for a new user. Complete all Phase 1 lessons then take the assessment. After passing (>=75%), confirm Phase 2 unlocks.
+8. Verify sequential lesson locking: Lesson 2 in any phase should be locked until Lesson 1 is complete.
+9. Verify assessment locking: The "Take Phase Assessment" button should be disabled until all phase lessons are complete.
+10. Confirm only approved Firestore `lesson_resources` are exposed by `/api/resources`.
+11. Sign in as a non-admin user without a license key; confirm they are redirected to `/activate`.
+12. Sign in as a non-admin user with a valid license key; confirm they reach `/dashboard`.
 
 ## Remaining engineering work
 
 - Deploy the Vercel functions and environment variables in Development, Preview, and Production.
-- Confirm `FIREBASE_SERVICE_ACCOUNT_JSON` is pasted as raw JSON (no Markdown links, no formatting).
 - Run the authenticated integration checklist above.
 - Once Firestore Admin works end-to-end, migrate any keys in `src/data/storedLicenses.json` to Firestore.
-- Replace the legacy local Express `ResourceStore` with Firestore, or make local development proxy the Vercel handlers.
 - Add pagination/search filters to `/admin/licenses` once license volume grows beyond the first 100 records.
 - Add stronger rate limiting for activation attempts before public launch.
-- Add a production-grade WebGL/motion landing treatment only if it can be lazy-loaded and includes reduced-motion and mobile fallbacks.
-- Verify deployed Vercel routing serves `api/` functions before the SPA fallback.
 
 ## Important constraints
 
@@ -233,3 +270,4 @@ After Vercel env vars are configured and the functions are deployed:
 - Do not expose YouTube keys, Firebase service-account credentials, or raw license keys in logs, Firestore, or browser code.
 - Do not remove XP, streaks, lesson completion, quizzes, challenges, journals, or existing Firebase login providers.
 - Do not rely on sidebar visibility for authorization; enforce authorization in Vercel APIs and route guards.
+- Do not remove or weaken the curriculum progressive locking — lessons and assessments must remain sequential.

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { UserProfile, UserProgress, TradeJournalEntry, Lesson, Phase } from '../types';
 import { LEVELS, LevelInfo } from '../data/levelsData';
-import { TOTAL_CURRICULUM_LESSONS } from '../data/curriculumData';
+import { TOTAL_CURRICULUM_LESSONS, CURRICULUM_DATA } from '../data/curriculumData';
 import { 
   auth, 
   onAuthStateChanged, 
@@ -265,8 +265,45 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const isPhaseUnlocked = (phase: Phase): boolean => {
-    if (phase.levelRequired <= 1) return true;
-    return currentLevel.levelNumber >= phase.levelRequired;
+    // Phase 1 always unlocked
+    if (phase.id <= 1) return true;
+    
+    // Each prior phase must have all its lessons completed AND its assessment passed
+    for (let prevId = 1; prevId < phase.id; prevId++) {
+      const prevPhase = CURRICULUM_DATA.find(p => p.id === prevId);
+      if (!prevPhase) return false;
+      
+      const allLessonsDone = prevPhase.lessons.every(l => progress.completedLessons.includes(l.id));
+      if (!allLessonsDone) return false;
+      
+      const prevQuizId = 'quiz-' + String(prevId).padStart(2, '0');
+      const prevScore = (progress.quizScores[prevQuizId] as number) ?? -1;
+      const passReq = prevPhase.quiz?.passingScore || 75;
+      if (prevScore < passReq) return false;
+    }
+    
+    return true;
+  };
+
+  const isLessonUnlocked = (lesson: Lesson, phase?: Phase): boolean => {
+    const parentPhase = phase || CURRICULUM_DATA.find(p => p.id === lesson.phaseId);
+    if (!parentPhase) return false;
+    if (!isPhaseUnlocked(parentPhase)) return false;
+    
+    const lessonIdx = parentPhase.lessons.findIndex(l => l.id === lesson.id);
+    if (lessonIdx <= 0) return true;
+    
+    for (let i = 0; i < lessonIdx; i++) {
+      if (!progress.completedLessons.includes(parentPhase.lessons[i].id)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const isPhaseAssessmentUnlocked = (phase: Phase): boolean => {
+    if (!isPhaseUnlocked(phase)) return false;
+    return phase.lessons.every(l => progress.completedLessons.includes(l.id));
   };
 
   const toggleLessonComplete = async (lessonId: string) => {

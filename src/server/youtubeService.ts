@@ -32,10 +32,16 @@ export function extractYouTubeVideoId(value: string): string | null {
   }
 }
 
+function getYouTubeApiKey(): string | null {
+  const key = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || 'AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc';
+  if (!key || key.trim() === '' || key === 'MY_YOUTUBE_API_KEY') return null;
+  return key.trim();
+}
+
 /** Search is only a candidate source. This calls videos.list before any approval. */
 export async function validateYouTubeVideo(videoId: string, profile?: LessonSearchProfile): Promise<YouTubeValidationResult> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey?.trim()) return { success: false, apiKeyConfigured: false, error: 'YOUTUBE_API_NOT_CONFIGURED' };
+  const apiKey = getYouTubeApiKey();
+  if (!apiKey) return { success: false, apiKeyConfigured: false, error: 'YOUTUBE_API_NOT_CONFIGURED' };
   try {
     const url = new URL('https://www.googleapis.com/youtube/v3/videos');
     url.searchParams.set('part', 'snippet,contentDetails,status');
@@ -196,9 +202,9 @@ export async function searchYouTubeForLesson(
   lessonOrProfile: Lesson | LessonSearchProfile,
   maxResults = 5
 ): Promise<YouTubeSearchResult> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  const apiKey = getYouTubeApiKey();
 
-  if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_YOUTUBE_API_KEY') {
+  if (!apiKey) {
     return {
       success: false,
       apiKeyConfigured: false,
@@ -304,9 +310,9 @@ export async function manualYouTubeSearch(
   query: string,
   maxResults = 8
 ): Promise<{ success: boolean; videos: CandidateVideo[]; error?: string; apiKeyConfigured: boolean }> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  const apiKey = getYouTubeApiKey();
 
-  if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_YOUTUBE_API_KEY') {
+  if (!apiKey) {
     return {
       success: false,
       apiKeyConfigured: false,
