@@ -47,6 +47,38 @@
       "activationCount": 0,
       "createdBy": "cli-admin",
       "notes": "Generated via CLI"
+    },
+    {
+      "id": "lic-03980257cf335f0a",
+      "keyHash": "aaff7e7bc795faf77a689e7bdcba967cbdf0294bc202d23c17a0c511f45fcc8b",
+      "keyPrefix": "TLB-1323",
+      "status": "available",
+      "assignedUid": null,
+      "assignedEmail": "test@example.com",
+      "createdAt": "2026-09-18T23:26:40.963Z",
+      "updatedAt": "2026-09-18T23:26:40.963Z",
+      "activatedAt": null,
+      "expiresAt": null,
+      "maxActivations": 1,
+      "activationCount": 0,
+      "createdBy": "cli-admin",
+      "notes": "Generated via CLI"
+    },
+    {
+      "id": "lic-4a49a39e5b238bc1",
+      "keyHash": "48575e5bfec88c336f334acf1cb71d9388d9a451ffec7c1d8b1e69a69d96598f",
+      "keyPrefix": "TLB-E9BA",
+      "status": "available",
+      "assignedUid": null,
+      "assignedEmail": "test@trenchlab.io",
+      "createdAt": "2026-09-18T23:37:25.921Z",
+      "updatedAt": "2026-09-18T23:37:25.921Z",
+      "activatedAt": null,
+      "expiresAt": null,
+      "maxActivations": 1,
+      "activationCount": 0,
+      "createdBy": "cli-admin",
+      "notes": "Generated via CLI"
     }
   ],
   "audit": [
@@ -76,6 +108,24 @@
       "actorEmail": "admin@trenchlab",
       "notes": "Generated via CLI",
       "createdAt": "2026-09-18T19:18:20.410Z"
+    },
+    {
+      "id": "aud-76af779e192f8a47",
+      "licenseId": "lic-03980257cf335f0a",
+      "action": "generate",
+      "actorUid": "cli-admin",
+      "actorEmail": "admin@trenchlab",
+      "notes": "Generated via CLI",
+      "createdAt": "2026-09-18T23:26:40.963Z"
+    },
+    {
+      "id": "aud-6c3fc06dbd832d3b",
+      "licenseId": "lic-4a49a39e5b238bc1",
+      "action": "generate",
+      "actorUid": "cli-admin",
+      "actorEmail": "admin@trenchlab",
+      "notes": "Generated via CLI",
+      "createdAt": "2026-09-18T23:37:25.921Z"
     }
   ]
 }

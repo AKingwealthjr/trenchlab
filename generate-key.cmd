@@ -1,2 +1,2 @@
 @echo off
-node_modules\.bin\tsx scripts\generate-license.mjs %*
+node "%~dp0scripts\generate-key.mjs" %*

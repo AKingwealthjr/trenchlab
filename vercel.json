@@ -2,15 +2,22 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "@vercel/node@3"
-    }
-  },
   "rewrites": [
     {
       "source": "/__/auth/:match*",
       "destination": "https://trenchlab-production.firebaseapp.com/__/auth/:match*"
+    },
+    {
+      "source": "/api/licenses/:action",
+      "destination": "/api/licenses/:action"
+    },
+    {
+      "source": "/api/discovery/:action",
+      "destination": "/api/discovery/:action"
+    },
+    {
+      "source": "/api/:match*",
+      "destination": "/api/:match*"
     },
     {
       "source": "/((?!api/).*)",
