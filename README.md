@@ -59,14 +59,20 @@ TRENCHLAB is an existing Firebase-backed React/Vite university application for S
 
 ### CLI command for generating license keys
 
-You can generate license keys directly from your terminal and save them straight to production Firestore:
+You can generate license keys directly from your terminal and save them straight to production Firestore.
+
+> [!TIP]
+> **Windows PowerShell Users**: If `npm run generate-key` shows a script execution policy error (`npm.ps1 cannot be loaded`), run `.\generate-key.bat` or `npm.cmd run generate-key` instead!
 
 ```bash
-# Generate a key tied to an email:
-npm run generate-key user@example.com "VIP student"
+# Recommended on Windows (PowerShell or Command Prompt):
+.\generate-key.bat user@example.com "VIP student"
 
-# Or generate a general key (any user can activate):
-npm run generate-key
+# Or via npm.cmd:
+npm.cmd run generate-key user@example.com "VIP student"
+
+# Or general unassigned key (any user can activate):
+.\generate-key.bat
 ```
 
 Output:

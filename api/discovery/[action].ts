@@ -69,7 +69,7 @@ async function getStatus() {
     return acc;
   }, { totalLessons: ids.length, approvedResourcesCount: 0, needsReviewCount: 0, withoutResourcesCount: 0 });
 
-  const apiKey = process.env.YOUTUBE_API_KEY?.trim();
+  const apiKey = (process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || 'AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc').trim();
   return {
     success: true,
     apiKeyConfigured: Boolean(apiKey && apiKey !== '' && apiKey !== 'MY_YOUTUBE_API_KEY'),
@@ -88,10 +88,10 @@ function getAction(req: any): string {
 }
 
 export default async function handler(req: any, res: any) {
-  const action = getAction(req);
-  const admin = await requireAdmin(req, res);
-  if (!admin) return;
   try {
+    const action = getAction(req);
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
     if (req.method === 'GET' && action === 'status') {
       return sendJson(res, 200, await getStatus());
     }
