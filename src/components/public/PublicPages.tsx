@@ -99,7 +99,7 @@ export function AccessPage() {
 }
 
 export function ActivatePage() {
-  const { firebaseUser, user, refreshProfile } = useUniversity();
+  const { firebaseUser, user, grantActiveAccess, refreshProfile } = useUniversity();
   const [key, setKey] = useState('');
   const [message, setMessage] = useState('');
   const [isActivating, setIsActivating] = useState(false);
@@ -128,8 +128,12 @@ export function ActivatePage() {
       });
       const data = await readApiJson(response);
       if (data.success) {
+        // Immediately grant active entitlement in state & local storage
+        grantActiveAccess(data.licenseId, data.accessExpiresAt || data.expiresAt);
         setMessage('ACCESS GRANTED - OPERATOR IDENTITY VERIFIED. INITIALIZING DASHBOARD...');
-        await refreshProfile();
+        // Sync any other fields in background
+        refreshProfile().catch(() => {});
+        // Route smoothly to dashboard via SPA navigation
         go('/dashboard');
         return;
       }

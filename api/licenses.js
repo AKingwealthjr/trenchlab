@@ -462,7 +462,7 @@ async function handler(req, res) {
             }, { merge: true });
           });
           await writeAudit(db2, { licenseId: ref.id, action: "activate", actorUid: user.uid, actorEmail: user.email || null });
-          return sendJson(res, 200, { success: true, message: "ACCESS_GRANTED" });
+          return sendJson(res, 200, { success: true, message: "ACCESS_GRANTED", licenseId: ref.id, accessStatus: "active", accessExpiresAt: null });
         } catch (dbErr) {
           const knownCodes = ["LICENSE_ALREADY_ACTIVATED", "LICENSE_REVOKED", "LICENSE_SUSPENDED", "LICENSE_EXPIRED"];
           if (knownCodes.includes(dbErr.message)) {
@@ -475,7 +475,7 @@ async function handler(req, res) {
       if (!fallbackResult.success) {
         return sendJson(res, 422, { success: false, error: fallbackResult.error || "INVALID_LICENSE", message: fallbackResult.message || "Activation failed." });
       }
-      return sendJson(res, 200, { success: true, message: "ACCESS_GRANTED" });
+      return sendJson(res, 200, { success: true, message: "ACCESS_GRANTED", licenseId: fallbackResult.license?.id || null, accessStatus: "active", accessExpiresAt: null });
     }
     const admin = await requireAdmin(req, res);
     if (!admin) return;

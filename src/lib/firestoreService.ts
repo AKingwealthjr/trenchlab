@@ -1,6 +1,7 @@
 import { 
   doc, 
   getDoc, 
+  getDocFromServer,
   setDoc, 
   updateDoc, 
   deleteDoc, 
@@ -86,7 +87,7 @@ export async function getOrCreateUserProfile(
 ): Promise<{ userDoc: FirestoreUserDocument; isNew: boolean }> {
   const userRef = doc(db, 'users', uid);
   try {
-    const snap = await getDoc(userRef);
+    const snap = await getDocFromServer(userRef).catch(() => getDoc(userRef));
     if (snap.exists()) {
       return { userDoc: snap.data() as FirestoreUserDocument, isNew: false };
     }

@@ -59,7 +59,10 @@ interface UniversityContextType {
   logout: () => Promise<void>;
   resetProgress: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  grantActiveAccess: (licenseId?: string, expiresAt?: string | null) => void;
   isPhaseUnlocked: (phase: Phase) => boolean;
+  isLessonUnlocked: (lesson: Lesson, phase?: Phase) => boolean;
+  isPhaseAssessmentUnlocked: (phase: Phase) => boolean;
 }
 
 const GUEST_USER: UserProfile = {
@@ -221,6 +224,12 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`
           });
 
+          const localCached = typeof window !== 'undefined' ? localStorage.getItem(`trenchlab_access_${fbUser.uid}`) : null;
+          const resolvedStatus = (userDoc.accessStatus === 'active' || localCached === 'active') ? 'active' : (userDoc.accessStatus || 'inactive');
+          if (resolvedStatus === 'active') {
+            try { localStorage.setItem(`trenchlab_access_${fbUser.uid}`, 'active'); } catch {}
+          }
+
           setUser({
             id: fbUser.uid,
             name: userDoc.displayName || fbUser.displayName || 'Solana Operator',
@@ -228,7 +237,7 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             avatarUrl: userDoc.photoURL || fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
             joinedDate: userDoc.createdAt ? userDoc.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
             isGuest: false,
-            accessStatus: userDoc.accessStatus || 'inactive',
+            accessStatus: resolvedStatus,
             licenseId: userDoc.licenseId || null,
             licenseActivatedAt: userDoc.licenseActivatedAt || null,
             accessExpiresAt: userDoc.accessExpiresAt || null
@@ -246,14 +255,16 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }
         } catch (error) {
           console.error('Error fetching user profile or progress from Firestore:', error);
-          // Fallback user state
+          const localCached = typeof window !== 'undefined' ? localStorage.getItem(`trenchlab_access_${fbUser.uid}`) : null;
+          // Fallback user state with persistent access status
           setUser({
             id: fbUser.uid,
             name: fbUser.displayName || 'Solana Operator',
             email: fbUser.email || '',
             avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
             joinedDate: new Date().toISOString().split('T')[0],
-            isGuest: false
+            isGuest: false,
+            accessStatus: localCached === 'active' ? 'active' : 'inactive'
           });
           setProgress(EMPTY_PROGRESS);
         } finally {
@@ -568,6 +579,21 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const grantActiveAccess = useCallback((licenseId?: string, expiresAt?: string | null) => {
+    setUser(prev => ({
+      ...prev,
+      accessStatus: 'active',
+      licenseId: licenseId || prev.licenseId || null,
+      licenseActivatedAt: new Date().toISOString(),
+      accessExpiresAt: expiresAt !== undefined ? expiresAt : prev.accessExpiresAt
+    }));
+    if (firebaseUser) {
+      try {
+        localStorage.setItem(`trenchlab_access_${firebaseUser.uid}`, 'active');
+      } catch {}
+    }
+  }, [firebaseUser]);
+
   const refreshProfile = async () => {
     if (!firebaseUser) return;
     setProfileLoading(true);
@@ -577,12 +603,17 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         email: firebaseUser.email || '',
         photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${firebaseUser.uid}`
       });
+      const localCached = typeof window !== 'undefined' ? localStorage.getItem(`trenchlab_access_${firebaseUser.uid}`) : null;
+      const resolvedStatus = (userDoc.accessStatus === 'active' || localCached === 'active') ? 'active' : (userDoc.accessStatus || 'inactive');
+      if (resolvedStatus === 'active') {
+        try { localStorage.setItem(`trenchlab_access_${firebaseUser.uid}`, 'active'); } catch {}
+      }
       setUser(prev => ({
         ...prev,
-        accessStatus: userDoc.accessStatus || 'inactive',
-        licenseId: userDoc.licenseId || null,
-        licenseActivatedAt: userDoc.licenseActivatedAt || null,
-        accessExpiresAt: userDoc.accessExpiresAt || null
+        accessStatus: resolvedStatus,
+        licenseId: userDoc.licenseId || prev.licenseId || null,
+        licenseActivatedAt: userDoc.licenseActivatedAt || prev.licenseActivatedAt || null,
+        accessExpiresAt: userDoc.accessExpiresAt || prev.accessExpiresAt || null
       }));
     } catch (err) {
       console.warn('Failed to refresh user profile from Firestore:', err);
@@ -623,7 +654,10 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         logout,
         resetProgress,
         refreshProfile,
-        isPhaseUnlocked
+        grantActiveAccess,
+        isPhaseUnlocked,
+        isLessonUnlocked,
+        isPhaseAssessmentUnlocked
       }}
     >
       {children}

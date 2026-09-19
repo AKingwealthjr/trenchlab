@@ -8392,7 +8392,7 @@ function extractYouTubeVideoId(value) {
   }
 }
 function getYouTubeApiKey() {
-  const key = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || "AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc";
+  const key = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || "";
   if (!key || key.trim() === "" || key === "MY_YOUTUBE_API_KEY") return null;
   return key.trim();
 }
@@ -9076,7 +9076,7 @@ async function getStatus() {
     else acc.withoutResourcesCount++;
     return acc;
   }, { totalLessons: ids.length, approvedResourcesCount: 0, needsReviewCount: 0, withoutResourcesCount: 0 });
-  const apiKey = (process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || "AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc").trim();
+  const apiKey = (process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || "").trim();
   return {
     success: true,
     apiKeyConfigured: Boolean(apiKey && apiKey !== "" && apiKey !== "MY_YOUTUBE_API_KEY"),

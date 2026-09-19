@@ -678,7 +678,7 @@ async function startServer() {
             }, { merge: true });
           });
           await writeAuditRecord(db, { licenseId: ref.id, action: 'activate', actorUid: user.uid, actorEmail: user.email || null });
-          return res.json({ success: true, message: 'ACCESS_GRANTED' });
+          return res.json({ success: true, message: 'ACCESS_GRANTED', licenseId: ref.id, accessStatus: 'active', accessExpiresAt: null });
         } catch (dbErr: any) {
           const knownCodes = ['LICENSE_ALREADY_ACTIVATED', 'LICENSE_REVOKED', 'LICENSE_SUSPENDED', 'LICENSE_EXPIRED'];
           if (knownCodes.includes(dbErr.message)) {
@@ -692,7 +692,7 @@ async function startServer() {
       if (!fallbackResult.success) {
         return jsonError(res, 422, fallbackResult.error || 'INVALID_LICENSE', fallbackResult.message || 'Activation failed.');
       }
-      return res.json({ success: true, message: 'ACCESS_GRANTED' });
+      return res.json({ success: true, message: 'ACCESS_GRANTED', licenseId: fallbackResult.license?.id || null, accessStatus: 'active', accessExpiresAt: null });
     } catch (err: any) {
       console.error('[LICENSE ACTIVATE] Error:', err);
       res.status(500).json({ success: false, error: err.message });

@@ -31,8 +31,8 @@ TRENCHLAB is an existing Firebase-backed React/Vite university application for S
 
 ### YouTube API Configuration (THIS PASS)
 
-- `src/server/youtubeService.ts` now uses `process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || 'AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc'`.
-- YouTube discovery and video validation never show "unconfigured" on Vercel or locally.
+- `src/server/youtubeService.ts` reads `process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY`.
+- YouTube discovery and video validation use the configured environment variable on Vercel or locally.
 - `api/resources.ts` includes an automatic fallback to `ResourceStore` so student video playback is 100% resilient even if Firestore is momentarily unreachable.
 
 ### Content Studio and YouTube
@@ -116,7 +116,7 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 
 | Variable | Type | Notes |
 |---|---|---|
-| `YOUTUBE_API_KEY` | Secret | Your YouTube Data API v3 key — **do not use `VITE_`**. Current key starts with `AIzaSyCjAE7...`. |
+| `YOUTUBE_API_KEY` | Secret | Your YouTube Data API v3 key — **do not use `VITE_`**. |
 | `ADMIN_EMAILS` | Config/Secret | Comma-separated admin email list. |
 | `FIREBASE_PROJECT_ID` | Config | `trenchlab-production` |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Secret | **Optional if the JSON file is committed to git.** Full JSON from Firebase console. |
@@ -150,7 +150,7 @@ Configure these in Vercel for Development, Preview, and Production. Never prefix
 ### 2. How to debug the YouTube API key ("unconfigured" banner)
 
 1. Open the Vercel dashboard -> **Settings -> Environment Variables**.
-2. Confirm `YOUTUBE_API_KEY` exists for the **Production** environment with the value starting with `AIzaSyCjAE7...`.
+2. Confirm `YOUTUBE_API_KEY` exists for the **Production** environment.
 3. **The variable must NOT have the `VITE_` prefix** — server functions read bare `process.env.YOUTUBE_API_KEY`.
 4. After adding or editing the variable, **trigger a new deployment** in Vercel (env changes do not live-reload).
 5. Call `GET /api/discovery/status` (as an admin) and verify `apiKeyConfigured: true` in the JSON response.

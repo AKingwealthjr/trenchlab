@@ -33,7 +33,7 @@ export function extractYouTubeVideoId(value: string): string | null {
 }
 
 function getYouTubeApiKey(): string | null {
-  const key = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || 'AIzaSyCjAE7fgfB4SygRUWypB_kA_lNT6o8XkGc';
+  const key = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || '';
   if (!key || key.trim() === '' || key === 'MY_YOUTUBE_API_KEY') return null;
   return key.trim();
 }

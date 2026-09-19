@@ -106,7 +106,7 @@ export const CurriculumView: React.FC = () => {
                   onClick={() => { if (unlocked) setActiveLesson(lesson); }}
                   className={`bg-[#131316] border p-4 rounded-xl transition-all space-y-3 ${
                     !unlocked
-                      ? 'border-[#242429] opacity-50 cursor-not-allowed select-none'
+                      ? 'border-[#242429] opacity-50 cursor-not-allowed select-none pointer-events-none'
                       : 'border-[#242429] hover:border-[#E8A33D]/60 cursor-pointer hover:translate-y-[-2px]'
                   }`}
                 >
@@ -225,27 +225,38 @@ export const CurriculumView: React.FC = () => {
 
               {/* Assessment Action */}
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => isUnlocked && setActiveQuizPhase(currentPhase)}
-                  disabled={!isUnlocked}
-                  className={`bg-[#1C1C22] border border-[#3A3A42] text-[#EDEDEF] px-4 py-2 rounded-lg text-xs font-mono font-bold flex items-center space-x-2 transition-all ${
-                    isUnlocked
-                      ? 'hover:bg-[#26262E] hover:border-[#E8A33D] cursor-pointer'
-                      : 'opacity-40 cursor-not-allowed'
-                  }`}
-                >
-                  <Award className="w-4 h-4 text-[#E8A33D]" />
-                  <span>TAKE PHASE ASSESSMENT</span>
-                  {currentQuizScore !== undefined && (
-                    <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded ${
-                      currentQuizScore >= currentPhase.quiz.passingScore 
-                        ? 'bg-emerald-950 text-emerald-400 font-bold' 
-                        : 'bg-rose-950 text-rose-400'
-                    }`}>
-                      {currentQuizScore}%
-                    </span>
-                  )}
-                </button>
+                {(() => {
+                  const isAssessmentUnlocked = isPhaseAssessmentUnlocked(currentPhase);
+                  return (
+                    <button
+                      onClick={() => isAssessmentUnlocked && setActiveQuizPhase(currentPhase)}
+                      disabled={!isAssessmentUnlocked}
+                      className={`bg-[#1C1C22] border text-[#EDEDEF] px-4 py-2 rounded-lg text-xs font-mono font-bold flex items-center space-x-2 transition-all ${
+                        isAssessmentUnlocked
+                          ? 'border-[#3A3A42] hover:bg-[#26262E] hover:border-[#E8A33D] cursor-pointer'
+                          : 'border-[#242429] opacity-40 cursor-not-allowed pointer-events-none'
+                      }`}
+                    >
+                      {!isAssessmentUnlocked ? <Lock className="w-4 h-4 text-rose-400" /> : <Award className="w-4 h-4 text-[#E8A33D]" />}
+                      <span>
+                        {!isUnlocked
+                          ? `ASSESSMENT LOCKED (PHASE ${currentPhase.id} LOCKED)`
+                          : !isAssessmentUnlocked
+                            ? `ASSESSMENT LOCKED (${completedInCurrentPhase}/${currentPhase.lessons.length} LESSONS)`
+                            : 'TAKE PHASE ASSESSMENT'}
+                      </span>
+                      {currentQuizScore !== undefined && (
+                        <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded ${
+                          currentQuizScore >= currentPhase.quiz.passingScore 
+                            ? 'bg-emerald-950 text-emerald-400 font-bold' 
+                            : 'bg-rose-950 text-rose-400'
+                        }`}>
+                          {currentQuizScore}%
+                        </span>
+                      )}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
 
@@ -284,7 +295,7 @@ export const CurriculumView: React.FC = () => {
                   onClick={() => { if (!isLessonLocked) setActiveLesson(lesson); }}
                   className={`bg-[#131316] border rounded-xl p-4 sm:p-5 transition-all space-y-3 flex flex-col justify-between ${
                     isLessonLocked
-                      ? 'border-[#242429] opacity-50 cursor-not-allowed select-none'
+                      ? 'border-[#242429] opacity-50 cursor-not-allowed select-none pointer-events-none'
                       : isCompleted
                         ? 'border-emerald-500/40 bg-emerald-950/10 hover:border-emerald-500 cursor-pointer'
                         : 'border-[#242429] hover:border-[#E8A33D]/60 hover:translate-y-[-2px] cursor-pointer'
