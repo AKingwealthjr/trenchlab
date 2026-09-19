@@ -9207,6 +9207,12 @@ async function handler(req, res) {
     return sendJson(res, 500, { success: false, error: "INTERNAL_ERROR", message: "The server could not complete the request." });
   }
 }
+
+// api-src/discovery/manual-add.ts
+function manualAddHandler(req, res) {
+  req.query = { ...req.query, action: "manual-add" };
+  return handler(req, res);
+}
 export {
-  handler as default
+  manualAddHandler as default
 };

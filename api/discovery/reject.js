@@ -9207,6 +9207,12 @@ async function handler(req, res) {
     return sendJson(res, 500, { success: false, error: "INTERNAL_ERROR", message: "The server could not complete the request." });
   }
 }
+
+// api-src/discovery/reject.ts
+function rejectHandler(req, res) {
+  req.query = { ...req.query, action: "reject" };
+  return handler(req, res);
+}
 export {
-  handler as default
+  rejectHandler as default
 };

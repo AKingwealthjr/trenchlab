@@ -9207,6 +9207,12 @@ async function handler(req, res) {
     return sendJson(res, 500, { success: false, error: "INTERNAL_ERROR", message: "The server could not complete the request." });
   }
 }
+
+// api-src/discovery/set-primary.ts
+function setPrimaryHandler(req, res) {
+  req.query = { ...req.query, action: "set-primary" };
+  return handler(req, res);
+}
 export {
-  handler as default
+  setPrimaryHandler as default
 };

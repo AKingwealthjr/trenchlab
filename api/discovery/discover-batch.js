@@ -9207,6 +9207,12 @@ async function handler(req, res) {
     return sendJson(res, 500, { success: false, error: "INTERNAL_ERROR", message: "The server could not complete the request." });
   }
 }
+
+// api-src/discovery/discover-batch.ts
+function discoverBatchHandler(req, res) {
+  req.query = { ...req.query, action: "discover-batch" };
+  return handler(req, res);
+}
 export {
-  handler as default
+  discoverBatchHandler as default
 };

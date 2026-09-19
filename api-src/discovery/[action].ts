@@ -14,18 +14,25 @@ function getDb() {
   try { return firebaseAdmin().db; } catch { return null; }
 }
 
-/** List resources from Firestore; falls back to ResourceStore on error */
+/** List resources from Firestore; falls back to ResourceStore on error or empty */
 async function listResources(): Promise<LessonResource[]> {
   const db = getDb();
   if (db) {
     try {
       const snapshot = await db.collection('lesson_resources').get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonResource));
+      if (!snapshot.empty) {
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonResource));
+      }
     } catch (err) {
       console.warn('[DISCOVERY] Firestore read failed, falling back to ResourceStore:', err);
     }
   }
-  return ResourceStore.getAll();
+  const fallback = ResourceStore.getAll();
+  // Auto-seed Firestore if db is connected so future queries are backed by persistent storage
+  if (db && fallback.length > 0) {
+    saveResources(fallback).catch(err => console.warn('[DISCOVERY] Auto-seeding Firestore failed:', err));
+  }
+  return fallback;
 }
 
 /** Persist a list of resources to Firestore; falls back to ResourceStore */
@@ -190,6 +197,22 @@ export default async function handler(req: any, res: any) {
       if (!candidate) return sendJson(res, 404, { success: false, error: 'RESOURCE_NOT_FOUND', message: 'Resource not found.' });
       await saveResources([{ ...candidate, status: 'REJECTED', isPrimary: false, validationStatus: 'rejected', updatedAt: now() }]);
       return sendJson(res, 200, { success: true });
+    }
+
+    if (action === 'set-primary') {
+      const { lessonId, resourceId } = body;
+      if (!lessonId || !resourceId) return sendJson(res, 400, { success: false, error: 'INVALID_REQUEST', message: 'lessonId and resourceId are required.' });
+      const existing = await listResources();
+      const target = existing.find(r => r.id === resourceId);
+      if (!target || target.lessonId !== lessonId) return sendJson(res, 404, { success: false, error: 'RESOURCE_NOT_FOUND', message: 'Target resource not found for this lesson.' });
+      const updated: LessonResource[] = existing.map(r => {
+        if (r.lessonId === lessonId) {
+          return { ...r, isPrimary: r.id === resourceId, status: r.id === resourceId ? 'APPROVED' : r.status, updatedAt: now() };
+        }
+        return r;
+      });
+      await saveResources(updated);
+      return sendJson(res, 200, { success: true, resource: updated.find(r => r.id === resourceId) });
     }
 
     return sendJson(res, 404, { success: false, error: 'UNKNOWN_ACTION', message: 'Unknown API action.' });

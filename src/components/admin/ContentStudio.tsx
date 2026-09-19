@@ -73,7 +73,15 @@ export const ContentStudio: React.FC = () => {
 
   const adminFetch = async (url: string, init: RequestInit = {}) => {
     const token = await firebaseUser?.getIdToken();
-    return fetch(url, { ...init, headers: { ...init.headers, 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+    const isGet = !init.method || init.method.toUpperCase() === 'GET';
+    return fetch(url, {
+      ...init,
+      headers: {
+        ...init.headers,
+        ...(isGet ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
   };
 
   // Fetch initial data

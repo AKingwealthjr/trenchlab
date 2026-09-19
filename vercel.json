@@ -5,11 +5,7 @@
       "destination": "https://trenchlab-production.firebaseapp.com/__/auth/:match*"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

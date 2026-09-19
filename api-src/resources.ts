@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
     if (lessonId) query = query.where('lessonId', '==', lessonId);
     const snapshot = await query.get();
     const resources = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-    if (resources.length > 0 || !lessonId) {
+    if (resources.length > 0) {
       return sendJson(res, 200, { success: true, resources });
     }
   } catch (error) {
