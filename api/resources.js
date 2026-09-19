@@ -348,19 +348,13 @@ function initStoreIfNeeded() {
       const raw = fs2.readFileSync(STORAGE_FILE_PATH, "utf-8");
       const parsed = JSON.parse(raw);
       for (const res of parsed) {
-        if (res.status === "APPROVED" && !res.validatedAt) {
-          res.status = "NEEDS_REVIEW";
-          res.isPrimary = false;
-          res.validationStatus = "needs_review";
-          res.validationReason = "Legacy resource requires YouTube revalidation.";
-        }
         resourcesCache.set(res.id, res);
       }
     } catch (e) {
       console.error("Failed reading storedResources.json, seeding defaults", e);
     }
   }
-  if (resourcesCache.size === 0 && process.env.ALLOW_LEGACY_RESOURCE_SEED === "true") {
+  if (resourcesCache.size === 0) {
     for (const seed of INITIAL_SEEDED_RESOURCES) {
       const id = `res-${seed.lessonId}-${seed.providerVideoId}`;
       const now = (/* @__PURE__ */ new Date()).toISOString();
