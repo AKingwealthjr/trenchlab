@@ -1,10 +1,10 @@
-import { firebaseAdmin } from '../../src/server/firebaseAdmin';
-import { requireAdmin, sendJson } from '../../src/server/vercelApi';
-import { CURRICULUM_DATA, getLessonById } from '../../src/data/curriculumData';
-import { extractYouTubeVideoId, searchYouTubeForLesson, validateYouTubeVideo } from '../../src/server/youtubeService';
-import { generateSearchProfile } from '../../src/lib/searchProfiles';
-import { ResourceStore } from '../../src/server/resourceStore';
-import type { LessonResource } from '../../src/types';
+import { firebaseAdmin } from '../src/server/firebaseAdmin';
+import { requireAdmin, sendJson } from '../src/server/vercelApi';
+import { CURRICULUM_DATA, getLessonById } from '../src/data/curriculumData';
+import { extractYouTubeVideoId, searchYouTubeForLesson, validateYouTubeVideo } from '../src/server/youtubeService';
+import { generateSearchProfile } from '../src/lib/searchProfiles';
+import { ResourceStore } from '../src/server/resourceStore';
+import type { LessonResource } from '../src/types';
 
 const now = () => new Date().toISOString();
 const allLessonIds = () => CURRICULUM_DATA.flatMap(phase => phase.lessons.map(lesson => lesson.id));

@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
-import { firebaseAdmin } from '../../src/server/firebaseAdmin';
-import { LicenseStore } from '../../src/server/licenseStore';
-import { requireAdmin, requireUser, sendJson } from '../../src/server/vercelApi';
+import { firebaseAdmin } from '../src/server/firebaseAdmin';
+import { LicenseStore } from '../src/server/licenseStore';
+import { requireAdmin, requireUser, sendJson } from '../src/server/vercelApi';
 
 const hash = (key: string) => createHash('sha256').update(key.trim().toUpperCase()).digest('hex');
 const createKey = () => `TLB-${randomBytes(6).toString('hex').toUpperCase().match(/.{1,4}/g)!.join('-')}`;
@@ -125,7 +125,6 @@ export default async function handler(req: any, res: any) {
 
     if (action === 'generate') {
       const rawKey = createKey();
-      const dbSuccess = false;
 
       if (db) {
         try {
