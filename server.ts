@@ -67,8 +67,20 @@ function jsonError(res: express.Response, status: number, error: string, message
   return res.status(status).type('application/json').json({ success: false, error, message });
 }
 
-function getAdminEmails() {
-  return new Set((process.env.ADMIN_EMAILS || '1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
+function getAdminEmails(): Set<string> {
+  const defaults = [
+    'vipkingwealth@gmail.com',
+    '1alexkingsley@gmail.com',
+    'alexkingsley@gmail.com',
+    'precilexis@gmail.com'
+  ];
+  const envAdmins = (process.env.ADMIN_EMAILS || '')
+    .replace(/['"]/g, '')
+    .split(',')
+    .map(value => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return new Set([...defaults, ...envAdmins]);
 }
 
 async function verifyFirebaseToken(token: string): Promise<FirebaseTokenClaims | null> {

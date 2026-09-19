@@ -130,11 +130,18 @@ export function firebaseAdmin() {
   return { auth: getAuth(), db: getFirestore() };
 }
 
-export function adminEmails() {
-  return new Set(
-    (process.env.ADMIN_EMAILS || '1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com')
-      .split(',')
-      .map(email => email.trim().toLowerCase())
-      .filter(Boolean)
-  );
+export function adminEmails(): Set<string> {
+  const defaults = [
+    'vipkingwealth@gmail.com',
+    '1alexkingsley@gmail.com',
+    'alexkingsley@gmail.com',
+    'precilexis@gmail.com'
+  ];
+  const envAdmins = (process.env.ADMIN_EMAILS || '')
+    .replace(/['"]/g, '')
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  return new Set([...defaults, ...envAdmins]);
 }

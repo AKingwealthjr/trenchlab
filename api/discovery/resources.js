@@ -112,9 +112,14 @@ function firebaseAdmin() {
   return { auth: getAuth(), db: getFirestore() };
 }
 function adminEmails() {
-  return new Set(
-    (process.env.ADMIN_EMAILS || "1alexkingsley@gmail.com,alexkingsley@gmail.com,precilexis@gmail.com").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean)
-  );
+  const defaults = [
+    "vipkingwealth@gmail.com",
+    "1alexkingsley@gmail.com",
+    "alexkingsley@gmail.com",
+    "precilexis@gmail.com"
+  ];
+  const envAdmins = (process.env.ADMIN_EMAILS || "").replace(/['"]/g, "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
+  return /* @__PURE__ */ new Set([...defaults, ...envAdmins]);
 }
 
 // src/server/vercelApi.ts

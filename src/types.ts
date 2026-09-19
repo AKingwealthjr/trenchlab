@@ -211,6 +211,7 @@ export interface UserProgress {
 }
 
 export const DEFAULT_ADMIN_EMAILS = [
+  'vipkingwealth@gmail.com',
   '1alexkingsley@gmail.com',
   'alexkingsley@gmail.com',
   'precilexis@gmail.com'
@@ -218,6 +219,6 @@ export const DEFAULT_ADMIN_EMAILS = [
 
 export function checkIsAdmin(email?: string | null): boolean {
   if (!email) return false;
-  const normalized = email.trim().toLowerCase();
+  const normalized = email.trim().toLowerCase().replace(/['"]/g, '');
   return DEFAULT_ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === normalized);
 }

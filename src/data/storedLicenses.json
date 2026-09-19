@@ -79,6 +79,22 @@
       "activationCount": 0,
       "createdBy": "cli-admin",
       "notes": "Generated via CLI"
+    },
+    {
+      "id": "lic-4ebdbed0d0ad9448",
+      "keyHash": "8340af2a4fdbf9c7fe2cd36efc5dad2b60d5deb9aaade8681ef3c6b83d33fd94",
+      "keyPrefix": "TLB-768C",
+      "status": "available",
+      "assignedUid": null,
+      "assignedEmail": null,
+      "createdAt": "2026-09-18T23:59:42.044Z",
+      "updatedAt": "2026-09-18T23:59:42.044Z",
+      "activatedAt": null,
+      "expiresAt": null,
+      "maxActivations": 1,
+      "activationCount": 0,
+      "createdBy": "cli-admin",
+      "notes": "Generated via CLI"
     }
   ],
   "audit": [
@@ -126,6 +142,15 @@
       "actorEmail": "admin@trenchlab",
       "notes": "Generated via CLI",
       "createdAt": "2026-09-18T23:37:25.921Z"
+    },
+    {
+      "id": "aud-d943fa616e29a9b7",
+      "licenseId": "lic-4ebdbed0d0ad9448",
+      "action": "generate",
+      "actorUid": "cli-admin",
+      "actorEmail": "admin@trenchlab",
+      "notes": "Generated via CLI",
+      "createdAt": "2026-09-18T23:59:42.044Z"
     }
   ]
 }
