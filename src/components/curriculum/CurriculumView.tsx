@@ -98,11 +98,17 @@ export const CurriculumView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSearchResults.map(({ phase, lesson }) => {
               const isCompleted = progress.completedLessons.includes(lesson.id);
+              const unlocked = isPhaseUnlocked(phase);
+
               return (
                 <div
                   key={lesson.id}
-                  onClick={() => setActiveLesson(lesson)}
-                  className="bg-[#131316] border border-[#242429] hover:border-[#E8A33D]/60 p-4 rounded-xl cursor-pointer transition-all hover:translate-y-[-2px] space-y-3"
+                  onClick={() => { if (unlocked) setActiveLesson(lesson); }}
+                  className={`bg-[#131316] border p-4 rounded-xl transition-all space-y-3 ${
+                    !unlocked
+                      ? 'border-[#242429] opacity-50 cursor-not-allowed select-none'
+                      : 'border-[#242429] hover:border-[#E8A33D]/60 cursor-pointer hover:translate-y-[-2px]'
+                  }`}
                 >
                   <div className="flex items-center justify-between text-[10px] font-mono">
                     <span className="text-[#E8A33D] font-semibold">{phase.badge}</span>
@@ -134,7 +140,12 @@ export const CurriculumView: React.FC = () => {
                       {lesson.difficulty}
                     </span>
 
-                    {isCompleted ? (
+                    {!unlocked ? (
+                      <span className="text-[#8E8E98] flex items-center space-x-1 text-[11px]">
+                        <Lock className="w-3 h-3" />
+                        <span>Locked</span>
+                      </span>
+                    ) : isCompleted ? (
                       <span className="text-emerald-400 flex items-center space-x-1 text-[11px]">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Completed</span>
@@ -215,8 +226,13 @@ export const CurriculumView: React.FC = () => {
               {/* Assessment Action */}
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  onClick={() => setActiveQuizPhase(currentPhase)}
-                  className="bg-[#1C1C22] hover:bg-[#26262E] border border-[#3A3A42] hover:border-[#E8A33D] text-[#EDEDEF] px-4 py-2 rounded-lg text-xs font-mono font-bold flex items-center space-x-2 transition-all"
+                  onClick={() => isUnlocked && setActiveQuizPhase(currentPhase)}
+                  disabled={!isUnlocked}
+                  className={`bg-[#1C1C22] border border-[#3A3A42] text-[#EDEDEF] px-4 py-2 rounded-lg text-xs font-mono font-bold flex items-center space-x-2 transition-all ${
+                    isUnlocked
+                      ? 'hover:bg-[#26262E] hover:border-[#E8A33D] cursor-pointer'
+                      : 'opacity-40 cursor-not-allowed'
+                  }`}
                 >
                   <Award className="w-4 h-4 text-[#E8A33D]" />
                   <span>TAKE PHASE ASSESSMENT</span>
@@ -260,14 +276,18 @@ export const CurriculumView: React.FC = () => {
             {currentPhase.lessons.map((lesson) => {
               const isCompleted = progress.completedLessons.includes(lesson.id);
 
+              const isLessonLocked = !isUnlocked;
+
               return (
                 <div
                   key={lesson.id}
-                  onClick={() => setActiveLesson(lesson)}
-                  className={`bg-[#131316] border rounded-xl p-4 sm:p-5 transition-all cursor-pointer space-y-3 flex flex-col justify-between ${
-                    isCompleted
-                      ? 'border-emerald-500/40 bg-emerald-950/10 hover:border-emerald-500'
-                      : 'border-[#242429] hover:border-[#E8A33D]/60 hover:translate-y-[-2px]'
+                  onClick={() => { if (!isLessonLocked) setActiveLesson(lesson); }}
+                  className={`bg-[#131316] border rounded-xl p-4 sm:p-5 transition-all space-y-3 flex flex-col justify-between ${
+                    isLessonLocked
+                      ? 'border-[#242429] opacity-50 cursor-not-allowed select-none'
+                      : isCompleted
+                        ? 'border-emerald-500/40 bg-emerald-950/10 hover:border-emerald-500 cursor-pointer'
+                        : 'border-[#242429] hover:border-[#E8A33D]/60 hover:translate-y-[-2px] cursor-pointer'
                   }`}
                 >
                   <div className="space-y-2">
@@ -308,7 +328,12 @@ export const CurriculumView: React.FC = () => {
                       {lesson.difficulty}
                     </span>
 
-                    {isCompleted ? (
+                    {isLessonLocked ? (
+                      <span className="text-[#8E8E98] flex items-center space-x-1 text-[11px]">
+                        <Lock className="w-3 h-3" />
+                        <span>Locked</span>
+                      </span>
+                    ) : isCompleted ? (
                       <span className="text-emerald-400 font-semibold flex items-center space-x-1 text-[11px]">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Completed</span>

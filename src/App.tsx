@@ -49,7 +49,7 @@ function mapTabToPath(tab: NavigationTab): string {
 }
 
 function UniversityApp() {
-  const { isAuthenticated, authLoading, firebaseUser, user } = useUniversity();
+  const { isAuthenticated, authLoading, profileLoading, firebaseUser, user } = useUniversity();
   const isAdmin = checkIsAdmin(firebaseUser?.email);
   const accessExpiresAt = user.accessExpiresAt ? new Date(user.accessExpiresAt).getTime() : null;
   const hasActiveLicense = user.accessStatus === 'active' && (!accessExpiresAt || accessExpiresAt > Date.now());
@@ -93,7 +93,7 @@ function UniversityApp() {
 
   // Protected Route enforcement: Redirect unauthenticated operators to /login
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || (isAuthenticated && profileLoading)) return;
     if (publicPath === '/' || publicPath === '/access') return;
 
     if ((isAdmin || hasActiveLicense) && publicPath === '/activate') {
@@ -121,15 +121,15 @@ function UniversityApp() {
         window.history.replaceState({}, '', mapTabToPath(dest));
       }
     }
-  }, [isAuthenticated, authLoading, authRoute, returnToTab, publicPath]);
+  }, [isAuthenticated, authLoading, profileLoading, authRoute, returnToTab, publicPath, isAdmin, hasActiveLicense]);
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || isAdmin || hasActiveLicense) return;
+    if (authLoading || profileLoading || !isAuthenticated || isAdmin || hasActiveLicense) return;
     if (publicPath === '/' || publicPath === '/access' || publicPath === '/activate') return;
     setAuthRoute(null);
     window.history.replaceState({}, '', '/activate');
     window.dispatchEvent(new PopStateEvent('popstate'));
-  }, [authLoading, isAuthenticated, isAdmin, hasActiveLicense, publicPath]);
+  }, [authLoading, profileLoading, isAuthenticated, isAdmin, hasActiveLicense, publicPath]);
 
   const handleNavigate = useCallback((tab: NavigationTab) => {
     setActiveTab(tab);
@@ -148,7 +148,7 @@ function UniversityApp() {
   }, [returnToTab]);
 
   // Loading State: Technical Terminal Splash
-  if (authLoading) {
+  if (authLoading || (isAuthenticated && profileLoading)) {
     return (
       <div className="min-h-screen bg-[#0A0A0B] text-[#EDEDEF] flex flex-col items-center justify-center p-6 select-none font-mono">
         <div className="w-12 h-12 rounded-xl bg-[#131316] border border-[#E8A33D]/40 flex items-center justify-center text-[#E8A33D] font-bold text-lg mb-4 shadow-[0_0_25px_-5px_rgba(232,163,61,0.25)]">

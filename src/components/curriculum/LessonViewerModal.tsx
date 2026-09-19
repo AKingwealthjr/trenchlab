@@ -33,8 +33,9 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
   onClose,
   onSelectLesson
 }) => {
-  const { progress, toggleLessonComplete, saveAssignment } = useUniversity();
+  const { progress, toggleLessonComplete, saveAssignment, isPhaseUnlocked } = useUniversity();
 
+  const isUnlocked = isPhaseUnlocked(phase);
   const isCompleted = progress.completedLessons.includes(lesson.id);
   const currentAssignmentText = progress.completedAssignments[lesson.id] || '';
 
@@ -76,6 +77,26 @@ export const LessonViewerModal: React.FC<LessonViewerModalProps> = ({
     setSavedAssignmentNotice(true);
     setTimeout(() => setSavedAssignmentNotice(false), 3000);
   };
+
+  if (!isUnlocked) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-[#131316] border border-[#242429] max-w-md w-full p-6 rounded-xl text-center space-y-4 font-mono">
+          <Lock className="w-8 h-8 text-rose-400 mx-auto" />
+          <h2 className="text-base font-bold text-[#EDEDEF]">PHASE LOCKED</h2>
+          <p className="text-xs text-[#8E8E98] leading-relaxed">
+            You cannot access lessons or video briefings in Phase {phase.id} until all lessons in Phase {phase.id - 1} are marked complete and the assessment is cleared with a score &ge; 75%.
+          </p>
+          <button
+            onClick={onClose}
+            className="bg-[#E8A33D] text-black px-4 py-2 rounded text-xs font-bold w-full cursor-pointer hover:bg-[#E8A33D]/90"
+          >
+            RETURN TO CURRICULUM
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-6 overflow-y-auto">

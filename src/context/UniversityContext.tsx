@@ -33,6 +33,7 @@ interface UniversityContextType {
   user: UserProfile;
   firebaseUser: FirebaseUser | null;
   authLoading: boolean;
+  profileLoading: boolean;
   isAuthenticated: boolean;
   progress: UserProgress;
   currentLevel: LevelInfo;
@@ -57,6 +58,7 @@ interface UniversityContextType {
   login: (name: string, email: string, provider?: string) => void;
   logout: () => Promise<void>;
   resetProgress: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isPhaseUnlocked: (phase: Phase) => boolean;
 }
 
@@ -134,6 +136,7 @@ const UniversityContext = createContext<UniversityContextType | undefined>(undef
 export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile>(GUEST_USER);
   const [progress, setProgress] = useState<UserProgress>(EMPTY_PROGRESS);
   const userRef = useRef<FirebaseUser | null>(null);
@@ -209,6 +212,7 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
+        setProfileLoading(true);
         try {
           // Initialize or fetch user doc from Firestore
           const { userDoc, isNew } = await getOrCreateUserProfile(fbUser.uid, {
@@ -252,11 +256,14 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             isGuest: false
           });
           setProgress(EMPTY_PROGRESS);
+        } finally {
+          setProfileLoading(false);
         }
       } else {
         // Not authenticated
         setUser(GUEST_USER);
         setProgress(EMPTY_PROGRESS);
+        setProfileLoading(false);
       }
       setAuthLoading(false);
     });
@@ -561,12 +568,36 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const refreshProfile = async () => {
+    if (!firebaseUser) return;
+    setProfileLoading(true);
+    try {
+      const { userDoc } = await getOrCreateUserProfile(firebaseUser.uid, {
+        displayName: firebaseUser.displayName || 'Solana Operator',
+        email: firebaseUser.email || '',
+        photoURL: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${firebaseUser.uid}`
+      });
+      setUser(prev => ({
+        ...prev,
+        accessStatus: userDoc.accessStatus || 'inactive',
+        licenseId: userDoc.licenseId || null,
+        licenseActivatedAt: userDoc.licenseActivatedAt || null,
+        accessExpiresAt: userDoc.accessExpiresAt || null
+      }));
+    } catch (err) {
+      console.warn('Failed to refresh user profile from Firestore:', err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   return (
     <UniversityContext.Provider
       value={{
         user,
         firebaseUser,
         authLoading,
+        profileLoading,
         isAuthenticated: Boolean(firebaseUser),
         progress,
         currentLevel,
@@ -591,6 +622,7 @@ export const UniversityProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         login,
         logout,
         resetProgress,
+        refreshProfile,
         isPhaseUnlocked
       }}
     >

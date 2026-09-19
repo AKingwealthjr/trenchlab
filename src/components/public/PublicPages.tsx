@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useUniversity } from '../../context/UniversityContext';
 import { readApiJson } from '../../lib/api';
 import { checkIsAdmin } from '../../types';
-import { ShieldCheck, ArrowRight, CheckCircle2, KeyRound } from 'lucide-react';
+import { ShieldCheck, ArrowRight, CheckCircle2, KeyRound, Loader2 } from 'lucide-react';
 
 const phases = [
   'FOUNDATION', 'MARKET READER', 'SOLANA OPERATOR', 'TRENCH SCOUT',
@@ -99,9 +99,10 @@ export function AccessPage() {
 }
 
 export function ActivatePage() {
-  const { firebaseUser, user } = useUniversity();
+  const { firebaseUser, user, refreshProfile } = useUniversity();
   const [key, setKey] = useState('');
   const [message, setMessage] = useState('');
+  const [isActivating, setIsActivating] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
 
   const isAdmin = checkIsAdmin(firebaseUser?.email);
@@ -109,20 +110,36 @@ export function ActivatePage() {
   const hasActiveLicense = user?.accessStatus === 'active' && (!accessExpiresAt || accessExpiresAt > Date.now());
 
   const activate = async () => {
-    const token = await firebaseUser?.getIdToken();
-    if (!token) return go('/login');
-    const response = await fetch('/api/licenses/activate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ licenseKey: key })
-    });
-    const data = await readApiJson(response);
-    if (data.success) {
-      setMessage('ACCESS GRANTED - OPERATOR IDENTITY VERIFIED');
-      window.location.assign('/dashboard');
+    const rawKey = key.trim().toUpperCase();
+    if (!rawKey) {
+      setMessage('PLEASE ENTER YOUR OPERATOR LICENSE KEY');
       return;
     }
-    setMessage(data.message || 'LICENSE ACTIVATION FAILED');
+    const token = await firebaseUser?.getIdToken();
+    if (!token) return go('/login');
+
+    setIsActivating(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/licenses/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ licenseKey: rawKey })
+      });
+      const data = await readApiJson(response);
+      if (data.success) {
+        setMessage('ACCESS GRANTED - OPERATOR IDENTITY VERIFIED. INITIALIZING DASHBOARD...');
+        await refreshProfile();
+        go('/dashboard');
+        return;
+      }
+      setMessage(data.message || 'LICENSE ACTIVATION FAILED');
+    } catch (err) {
+      console.error('Activation error:', err);
+      setMessage('NETWORK ERROR - UNABLE TO REACH LICENSING SERVER');
+    } finally {
+      setIsActivating(false);
+    }
   };
 
   return (
@@ -186,9 +203,17 @@ export function ActivatePage() {
                 />
                 <button
                   onClick={activate}
-                  className="border border-[#E8A33D] text-[#E8A33D] p-2.5 w-full font-mono font-bold rounded text-xs hover:bg-[#E8A33D]/10 cursor-pointer"
+                  disabled={isActivating}
+                  className="border border-[#E8A33D] text-[#E8A33D] p-2.5 w-full font-mono font-bold rounded text-xs hover:bg-[#E8A33D]/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  TEST ACTIVATE KEY
+                  {isActivating ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>VERIFYING...</span>
+                    </>
+                  ) : (
+                    <span>TEST ACTIVATE KEY</span>
+                  )}
                 </button>
                 {message && <p className="font-mono text-xs text-[#E8A33D]">{message}</p>}
               </div>
@@ -234,9 +259,17 @@ export function ActivatePage() {
             </div>
             <button
               onClick={activate}
-              className="mt-4 bg-[#E8A33D] text-black p-3.5 w-full font-mono font-bold rounded cursor-pointer hover:bg-[#E8A33D]/90 transition-colors"
+              disabled={isActivating}
+              className="mt-4 bg-[#E8A33D] text-black p-3.5 w-full font-mono font-bold rounded cursor-pointer hover:bg-[#E8A33D]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              ACTIVATE LICENSE
+              {isActivating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>VERIFYING LICENSE...</span>
+                </>
+              ) : (
+                <span>ACTIVATE LICENSE</span>
+              )}
             </button>
             {message && <p className="mt-4 font-mono text-sm text-[#E8A33D]">{message}</p>}
             <p className="mt-6 text-xs text-[#9A9AA3] font-mono text-center">
