@@ -6,8 +6,7 @@ import {
   ShieldCheck, 
   User, 
   LogOut, 
-  Activity,
-  Terminal
+  Activity
 } from 'lucide-react';
 import { useUniversity } from '../../context/UniversityContext';
 
@@ -36,11 +35,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
             <Activity className="w-3.5 h-3.5 text-emerald-400" />
             <span>TPS:</span>
             <span className="text-[#EDEDEF]">2,482</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <Terminal className="w-3.5 h-3.5 text-[#E8A33D]" />
-            <span>BASE FEE:</span>
-            <span className="text-[#EDEDEF]">0.000005 SOL</span>
           </div>
         </div>
       </div>
