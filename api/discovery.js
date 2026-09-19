@@ -8404,11 +8404,18 @@ async function validateYouTubeVideo(videoId, profile) {
     url.searchParams.set("part", "snippet,contentDetails,status");
     url.searchParams.set("id", videoId);
     url.searchParams.set("key", apiKey);
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        "Referer": "https://thetrenchlab.vercel.app/",
+        "X-Referer": "https://thetrenchlab.vercel.app/"
+      }
+    });
     if (!response.ok) {
       const body = await response.text();
       const quota = response.status === 403 && /quota|rateLimitExceeded/i.test(body);
-      return { success: false, apiKeyConfigured: true, error: quota ? "YOUTUBE_API_QUOTA_REACHED" : `YOUTUBE_API_ERROR_${response.status}` };
+      const refererBlocked = response.status === 403 && /referer|blocked/i.test(body);
+      if (refererBlocked) console.error("[YOUTUBE] API key referer restriction is blocking server requests. Go to Google Cloud Console \u2192 API Key \u2192 Remove or update HTTP referrer restrictions.");
+      return { success: false, apiKeyConfigured: true, error: quota ? "YOUTUBE_API_QUOTA_REACHED" : refererBlocked ? "YOUTUBE_API_REFERER_BLOCKED" : `YOUTUBE_API_ERROR_${response.status}` };
     }
     const item = (await response.json()).items?.[0];
     if (!item) return { success: false, apiKeyConfigured: true, error: "VIDEO_NOT_FOUND" };
@@ -8445,15 +8452,22 @@ async function executeYouTubeQuery(query, profile, apiKey, maxResults) {
     searchUrl.searchParams.set("relevanceLanguage", "en");
     searchUrl.searchParams.set("maxResults", String(Math.min(maxResults, 10)));
     searchUrl.searchParams.set("key", apiKey);
-    const searchRes = await fetch(searchUrl.toString());
+    const searchRes = await fetch(searchUrl.toString(), {
+      headers: {
+        "Referer": "https://thetrenchlab.vercel.app/",
+        "X-Referer": "https://thetrenchlab.vercel.app/"
+      }
+    });
     if (!searchRes.ok) {
       const errText = await searchRes.text();
       const isQuota = searchRes.status === 403 && (errText.includes("quota") || errText.includes("rateLimitExceeded"));
+      const isRefererBlocked = searchRes.status === 403 && (errText.includes("referer") || errText.includes("Referer") || errText.includes("blocked"));
+      if (isRefererBlocked) console.error("[YOUTUBE] Referrer restriction is blocking server-side API calls. Remove HTTP referrer restrictions from your API key in Google Cloud Console.");
       return {
         videos: [],
         rawCount: 0,
         quotaExceeded: isQuota,
-        error: isQuota ? "YouTube Data API daily quota limit reached." : `YouTube API error (${searchRes.status}): ${errText.slice(0, 150)}`
+        error: isQuota ? "YouTube Data API daily quota limit reached." : isRefererBlocked ? "YouTube API key has referrer restrictions blocking server-side calls. In Google Cloud Console, remove HTTP referrer restrictions from this API key." : `YouTube API error (${searchRes.status}): ${errText.slice(0, 150)}`
       };
     }
     const searchData = await searchRes.json();
@@ -8469,7 +8483,12 @@ async function executeYouTubeQuery(query, profile, apiKey, maxResults) {
       detailsUrl.searchParams.set("id", videoIds.join(","));
       detailsUrl.searchParams.set("key", apiKey);
       try {
-        const detRes = await fetch(detailsUrl.toString());
+        const detRes = await fetch(detailsUrl.toString(), {
+          headers: {
+            "Referer": "https://thetrenchlab.vercel.app/",
+            "X-Referer": "https://thetrenchlab.vercel.app/"
+          }
+        });
         if (detRes.ok) {
           const detData = await detRes.json();
           for (const item of detData.items || []) {
